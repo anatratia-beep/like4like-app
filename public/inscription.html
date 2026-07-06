@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Créer un compte - Like4Like Etudiants</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="centre-page">
+  <div class="carte">
+    <img src="/img/logo.png" alt="IBDA" style="display:block;margin:0 auto 12px;width:110px;">
+    <h1 style="text-align:center;">Créer mon compte</h1>
+    <p style="text-align:center;color:var(--muted);">Demande le code d'inscription à ton enseignant.</p>
+    <form id="formInscription">
+      <input type="text" id="code" placeholder="Code d'inscription (ex: IBDAV1)" required>
+      <input type="text" id="nom" placeholder="Nom complet" required>
+      <input type="tel" id="telephone" placeholder="Numéro de téléphone (mobile money)" required>
+      <select id="classe" required>
+        <option value="">-- Choisis ta session --</option>
+        <option value="S1_MATIN">S1 Matin</option>
+        <option value="S2_MATIN">S2 Matin</option>
+        <option value="S1_APREM">S1 Après-midi</option>
+        <option value="S2_APREM">S2 Après-midi</option>
+      </select>
+      <input type="password" id="motDePasse" placeholder="Choisis un mot de passe" required>
+      <button type="submit">Créer mon compte</button>
+      <div class="erreur" id="messageErreur"></div>
+    </form>
+    <a class="lien" href="/">J'ai déjà un compte, me connecter</a>
+  </div>
+</div>
+<script src="/js/noyau.js"></script>
+<script>
+document.getElementById('formInscription').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const erreurDiv = document.getElementById('messageErreur');
+  erreurDiv.textContent = '';
+  try {
+    const data = await api('/auth/inscription', 'POST', {
+      code: document.getElementById('code').value.trim(),
+      nom: document.getElementById('nom').value.trim(),
+      telephone: document.getElementById('telephone').value.trim(),
+      classe: document.getElementById('classe').value,
+      mot_de_passe: document.getElementById('motDePasse').value,
+    });
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('utilisateur', JSON.stringify(data.utilisateur));
+    window.location.href = '/app.html';
+  } catch (err) {
+    erreurDiv.textContent = err.message || 'Erreur lors de la création du compte';
+  }
+});
+</script>
+</body>
+</html>

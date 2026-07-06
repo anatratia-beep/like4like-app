@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion - Like4Like Etudiants</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="centre-page">
+  <div class="carte">
+    <img src="/img/logo.png" alt="IBDA" style="display:block;margin:0 auto 12px;width:110px;">
+    <h1 style="text-align:center;">Like4Like Etudiants</h1>
+    <p style="text-align:center;color:var(--muted);">Jetons • Publications • Points • Ariary</p>
+    <form id="formConnexion">
+      <input type="tel" id="identifiant" placeholder="Numéro de téléphone" required>
+      <input type="password" id="motDePasse" placeholder="Mot de passe" required>
+      <button type="submit">Se connecter</button>
+      <div class="erreur" id="messageErreur"></div>
+    </form>
+    <a class="lien" href="/inscription.html">Pas encore de compte ? Créer un compte étudiant</a>
+  </div>
+</div>
+<script src="/js/noyau.js"></script>
+<script>
+document.getElementById('formConnexion').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const identifiant = document.getElementById('identifiant').value.trim();
+  const mot_de_passe = document.getElementById('motDePasse').value;
+  const erreurDiv = document.getElementById('messageErreur');
+  erreurDiv.textContent = '';
+  try {
+    const data = await api('/auth/login', 'POST', { identifiant, mot_de_passe });
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('utilisateur', JSON.stringify(data.utilisateur));
+    window.location.href = data.utilisateur.role === 'admin' ? '/admin.html' : '/app.html';
+  } catch (err) {
+    erreurDiv.textContent = err.message || 'Erreur de connexion';
+  }
+});
+</script>
+</body>
+</html>

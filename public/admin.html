@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Administration - Like4Like Etudiants</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>.conteneur { max-width: 900px; } .nav-bas { max-width: 900px; }</style>
+</head>
+<body>
+<div class="conteneur">
+  <div class="entete">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <img src="/img/logo.png" alt="IBDA" style="width:32px;height:32px;border-radius:50%;">
+      <h2 id="titrePage">Administration</h2>
+    </div>
+    <button class="secondaire" style="width:auto;padding:6px 10px;" onclick="activerNotifications()" title="Activer les notifications">🔔</button>
+    <button class="secondaire" style="width:auto;padding:6px 10px;" onclick="deconnexion()">Quitter</button>
+  </div>
+  <div class="contenu-page" id="contenuPage"></div>
+  <div class="nav-bas">
+    <button data-onglet="etudiants" onclick="afficherOngletAdmin('etudiants')">👥<br>Etudiants</button>
+    <button data-onglet="publications" onclick="afficherOngletAdmin('publications')">📰<br>Publications</button>
+    <button data-onglet="messages" onclick="afficherOngletAdmin('messages')">💬<br>Messages</button>
+    <button data-onglet="transactions" onclick="afficherOngletAdmin('transactions')">📜<br>Transactions</button>
+    <button data-onglet="retraits" onclick="afficherOngletAdmin('retraits')">💸<br>Retraits</button>
+    <button data-onglet="reglages" onclick="afficherOngletAdmin('reglages')">⚙️<br>Reglages</button>
+  </div>
+</div>
+<script src="/js/noyau.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>

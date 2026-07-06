@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Like4Like Etudiants</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="conteneur">
+  <div class="entete">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <img src="/img/logo.png" alt="IBDA" style="width:32px;height:32px;border-radius:50%;">
+      <h2 id="titrePage">Fil des publications</h2>
+    </div>
+    <button class="secondaire" style="width:auto;padding:6px 10px;" onclick="activerNotifications()" title="Activer les notifications">🔔</button>
+    <button class="secondaire" style="width:auto;padding:6px 10px;" onclick="deconnexion()">Quitter</button>
+  </div>
+  <div class="solde-bar">
+    <div class="pastille"><div class="valeur" id="soldeJetons">-</div><div class="label">Jetons</div></div>
+    <div class="pastille"><div class="valeur" id="soldePoints">-</div><div class="label">Points</div></div>
+    <div class="pastille"><div class="valeur" id="soldeAriary">-</div><div class="label">Ariary</div></div>
+  </div>
+  <div class="contenu-page" id="contenuPage"></div>
+  <div class="nav-bas">
+    <button data-onglet="fil" onclick="afficherOnglet('fil')">📰<br>Fil</button>
+    <button data-onglet="publier" onclick="afficherOnglet('publier')">➕<br>Publier</button>
+    <button data-onglet="valider" onclick="afficherOnglet('valider')">✅<br>A valider</button>
+    <button data-onglet="portefeuille" onclick="afficherOnglet('portefeuille')">💰<br>Portefeuille</button>
+    <button data-onglet="messages" onclick="afficherOnglet('messages')">💬<br>Messages</button>
+    <button data-onglet="profil" onclick="afficherOnglet('profil')">👤<br>Profil</button>
+  </div>
+</div>
+<script src="/js/noyau.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

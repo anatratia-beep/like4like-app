@@ -1,0 +1,24 @@
+{
+  "name": "like4like-etudiants",
+  "version": "1.0.0",
+  "description": "Systeme de jetons / points / like4like pour 142 etudiants (jetons <-> Ariary via MVola)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed-admin": "node src/seedAdmin.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1",
+    "node-cron": "^3.0.3",
+    "node-fetch": "^2.7.0",
+    "uuid": "^9.0.1",
+    "web-push": "^3.6.7"
+  }
+}

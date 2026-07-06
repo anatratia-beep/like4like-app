@@ -1,0 +1,75 @@
+:root {
+  --primary: #1d7a4c;
+  --primary-dark: #145c38;
+  --accent: #f2a900;
+  --bg: #f4f6f5;
+  --card: #ffffff;
+  --text: #22302a;
+  --muted: #6b7a73;
+  --danger: #c0392b;
+  --radius: 10px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+.conteneur { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--card); }
+.centre-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+.carte { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); width: 100%; max-width: 400px; }
+h1, h2, h3 { color: var(--primary-dark); }
+input, textarea, select, button {
+  width: 100%; padding: 10px 12px; margin: 6px 0; border-radius: 8px;
+  border: 1px solid #d7ded9; font-size: 15px; font-family: inherit;
+}
+button { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: 600; }
+button:hover { background: var(--primary-dark); }
+button.secondaire { background: #e6ece8; color: var(--text); }
+button.danger { background: var(--danger); }
+.erreur { color: var(--danger); font-size: 14px; margin: 4px 0; }
+.succes { color: var(--primary); font-size: 14px; margin: 4px 0; }
+.nav-bas {
+  position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto;
+  display: flex; background: white; border-top: 1px solid #e2e8e4; z-index: 10;
+}
+.nav-bas button { flex: 1; background: none; color: var(--muted); border-radius: 0; padding: 12px 4px; font-size: 12px; }
+.nav-bas button.actif { color: var(--primary); font-weight: 700; }
+.entete {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; background: var(--primary); color: white; position: sticky; top: 0; z-index: 5;
+}
+.entete h2 { color: white; margin: 0; font-size: 18px; }
+.contenu-page { padding: 12px 16px 80px; }
+.solde-bar { display: flex; gap: 8px; padding: 10px 16px; background: #eef7f1; }
+.pastille { flex: 1; text-align: center; background: white; border-radius: 8px; padding: 8px 4px; }
+.pastille .valeur { font-size: 18px; font-weight: 700; color: var(--primary-dark); }
+.pastille .label { font-size: 11px; color: var(--muted); }
+.publication { border: 1px solid #e5eae6; border-radius: var(--radius); padding: 12px; margin-bottom: 12px; }
+.publication .auteur { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.publication .auteur img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #ddd; }
+.publication .auteur .nom { font-weight: 600; font-size: 14px; }
+.publication .date { font-size: 11px; color: var(--muted); }
+.actions-pub { display: flex; gap: 8px; margin-top: 8px; }
+.actions-pub button { width: auto; flex: 1; font-size: 13px; padding: 8px; }
+.transaction-item, .interaction-item, .conversation-item, .retrait-item, .etudiant-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px; border-bottom: 1px solid #eef1ef; font-size: 14px;
+}
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #eef1ef; color: var(--muted); }
+.badge.VALIDE, .badge.VALIDEE, .badge.PAYE { background: #e3f4e8; color: var(--primary-dark); }
+.badge.EN_ATTENTE { background: #fdf3dd; color: #a67102; }
+.badge.ECHEC, .badge.REJETEE, .badge.REJETE { background: #fbe4e1; color: var(--danger); }
+.msg-liste { display: flex; flex-direction: column; gap: 6px; padding: 8px; height: calc(100vh - 180px); overflow-y: auto; }
+.bulle { max-width: 75%; padding: 8px 12px; border-radius: 14px; font-size: 14px; }
+.bulle.moi { align-self: flex-end; background: var(--primary); color: white; }
+.bulle.autre { align-self: flex-start; background: #eef1ef; }
+.barre-envoi { display: flex; gap: 6px; padding: 8px; position: fixed; bottom: 56px; left: 0; right: 0; max-width: 480px; margin: 0 auto; background: white; }
+.barre-envoi input { flex: 1; margin: 0; }
+.barre-envoi button { width: auto; padding: 10px 16px; margin: 0; }
+.photo-profil { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; background: #ddd; display: block; margin: 0 auto 10px; }
+a { color: var(--primary-dark); }
+.lien { text-align: center; display: block; margin-top: 10px; font-size: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 6px; border-bottom: 1px solid #eee; }
