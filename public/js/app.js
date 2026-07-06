@@ -302,30 +302,129 @@ async function chargerProfil() {
   zone.innerHTML = `
     <img class="photo-profil" src="${u.photo_url || ''}" id="apercuPhoto" onerror="this.style.visibility='hidden'">
     <h3 style="text-align:center;">${echapper(u.nom)}</h3>
-    <p style="text-align:center;color:var(--muted);">${nomClasse(u.classe)} • ${echapper(u.telephone)}</p>
-    <input type="file" id="fichierPhoto" accept="image/*">
-    <button onclick="changerPhoto()">Mettre a jour la photo</button>
+    <p style="text-align:center;color:var(--text-muted);">${nomClasse(u.classe)} · ${echapper(u.telephone)}</p>
+    <label>Photo de profil</label>
+    <input type="file" id="fichierPhoto" accept="image/*" onchange="fichierPhotoSelectionne(event)">
+    <p class="date" style="text-align:center;">Choisis une image : tu pourras ensuite la déplacer et zoomer avant d'enregistrer.</p>
+    <div id="editeurPhotoZone"></div>
     <div id="messagePhoto"></div>
 
-    <h3>Changer mon mot de passe</h3>
+    <h3>Mot de passe</h3>
     <input type="password" id="ancienMdp" placeholder="Ancien mot de passe">
     <input type="password" id="nouveauMdp" placeholder="Nouveau mot de passe">
-    <button onclick="changerMotDePasse()">Mettre a jour</button>
+    <button onclick="changerMotDePasse()">Mettre à jour</button>
     <div id="messageMdp"></div>
   `;
 }
 
-async function changerPhoto() {
-  const fichier = document.getElementById('fichierPhoto').files[0];
-  const msg = document.getElementById('messagePhoto');
+let edPhoto = null;
+
+function fichierPhotoSelectionne(evenement) {
+  const fichier = evenement.target.files[0];
   if (!fichier) return;
-  const formData = new FormData();
-  formData.append('photo', fichier);
-  try {
-    await api('/users/me/photo', 'PUT', formData, true);
-    msg.innerHTML = '<div class="succes">Photo mise a jour !</div>';
-    chargerProfil();
-  } catch (e) { msg.innerHTML = `<div class="erreur">${e.message}</div>`; }
+  const img = new Image();
+  img.onload = () => ouvrirEditeurPhoto(img);
+  img.src = URL.createObjectURL(fichier);
+}
+
+function ouvrirEditeurPhoto(img) {
+  const taille = 260;
+  const coverScale = Math.max(taille / img.width, taille / img.height);
+  edPhoto = { img, scale: coverScale, coverScale, offsetX: 0, offsetY: 0, taille };
+
+  const zone = document.getElementById('editeurPhotoZone');
+  zone.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin:14px 0;">
+      <div style="width:${taille}px;height:${taille}px;border-radius:50%;overflow:hidden;border:2px solid var(--border-strong);">
+        <canvas id="canvasPhoto" width="${taille}" height="${taille}" style="cursor:grab;display:block;touch-action:none;"></canvas>
+      </div>
+      <input type="range" id="zoomPhoto" min="100" max="300" value="100" style="width:${taille}px;">
+      <div style="display:flex;gap:8px;width:100%;max-width:${taille}px;">
+        <button class="secondaire" onclick="annulerEditeurPhoto()">Annuler</button>
+        <button onclick="validerEditeurPhoto()">Enregistrer</button>
+      </div>
+    </div>
+  `;
+  dessinerPhoto();
+
+  const canvas = document.getElementById('canvasPhoto');
+  let glisse = false, dernierX = 0, dernierY = 0;
+  const debut = (x, y) => { glisse = true; dernierX = x; dernierY = y; canvas.style.cursor = 'grabbing'; };
+  const bouge = (x, y) => {
+    if (!glisse) return;
+    edPhoto.offsetX += x - dernierX;
+    edPhoto.offsetY += y - dernierY;
+    dernierX = x; dernierY = y;
+    clamperOffsetPhoto();
+    dessinerPhoto();
+  };
+  const fin = () => { glisse = false; canvas.style.cursor = 'grab'; };
+
+  canvas.addEventListener('mousedown', (e) => debut(e.offsetX, e.offsetY));
+  canvas.addEventListener('mousemove', (e) => bouge(e.offsetX, e.offsetY));
+  window.addEventListener('mouseup', fin);
+  canvas.addEventListener('touchstart', (e) => {
+    const t = e.touches[0], r = canvas.getBoundingClientRect();
+    debut(t.clientX - r.left, t.clientY - r.top);
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    const t = e.touches[0], r = canvas.getBoundingClientRect();
+    bouge(t.clientX - r.left, t.clientY - r.top);
+  }, { passive: true });
+  canvas.addEventListener('touchend', fin);
+
+  document.getElementById('zoomPhoto').addEventListener('input', (e) => {
+    edPhoto.scale = edPhoto.coverScale * (Number(e.target.value) / 100);
+    clamperOffsetPhoto();
+    dessinerPhoto();
+  });
+}
+
+function clamperOffsetPhoto() {
+  const { img, scale, taille } = edPhoto;
+  const w = img.width * scale, h = img.height * scale;
+  const maxX = Math.max(0, (w - taille) / 2);
+  const maxY = Math.max(0, (h - taille) / 2);
+  edPhoto.offsetX = Math.min(maxX, Math.max(-maxX, edPhoto.offsetX));
+  edPhoto.offsetY = Math.min(maxY, Math.max(-maxY, edPhoto.offsetY));
+}
+
+function dessinerPhoto() {
+  const canvas = document.getElementById('canvasPhoto');
+  const ctx = canvas.getContext('2d');
+  const { img, scale, offsetX, offsetY, taille } = edPhoto;
+  const w = img.width * scale, h = img.height * scale;
+  ctx.clearRect(0, 0, taille, taille);
+  ctx.drawImage(img, taille / 2 - w / 2 + offsetX, taille / 2 - h / 2 + offsetY, w, h);
+}
+
+function annulerEditeurPhoto() {
+  edPhoto = null;
+  document.getElementById('editeurPhotoZone').innerHTML = '';
+  document.getElementById('fichierPhoto').value = '';
+}
+
+function validerEditeurPhoto() {
+  const resolution = 500;
+  const sortie = document.createElement('canvas');
+  sortie.width = resolution; sortie.height = resolution;
+  const ctxSortie = sortie.getContext('2d');
+  const { img, scale, offsetX, offsetY, taille } = edPhoto;
+  const facteur = resolution / taille;
+  const w = img.width * scale * facteur, h = img.height * scale * facteur;
+  ctxSortie.drawImage(img, resolution / 2 - w / 2 + offsetX * facteur, resolution / 2 - h / 2 + offsetY * facteur, w, h);
+
+  sortie.toBlob(async (blob) => {
+    const formData = new FormData();
+    formData.append('photo', blob, 'profil.jpg');
+    const msg = document.getElementById('messagePhoto');
+    try {
+      await api('/users/me/photo', 'PUT', formData, true);
+      msg.innerHTML = '<div class="succes">Photo mise à jour.</div>';
+      annulerEditeurPhoto();
+      chargerProfil();
+    } catch (e) { msg.innerHTML = `<div class="erreur">${e.message}</div>`; }
+  }, 'image/jpeg', 0.92);
 }
 
 async function changerMotDePasse() {
@@ -334,7 +433,7 @@ async function changerMotDePasse() {
   const msg = document.getElementById('messageMdp');
   try {
     await api('/auth/changer-mot-de-passe', 'POST', { ancien_mot_de_passe, nouveau_mot_de_passe });
-    msg.innerHTML = '<div class="succes">Mot de passe mis a jour !</div>';
+    msg.innerHTML = '<div class="succes">Mot de passe mis à jour.</div>';
   } catch (e) { msg.innerHTML = `<div class="erreur">${e.message}</div>`; }
 }
 
