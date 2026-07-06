@@ -9,25 +9,25 @@
 <body>
 <div class="centre-page">
   <div class="carte">
-    <img src="/img/logo.png" alt="IBDA" style="display:block;margin:0 auto 12px;width:110px;">
-    <h1 style="text-align:center;">Créer mon compte</h1>
-    <p style="text-align:center;color:var(--muted);">Demande le code d'inscription à ton enseignant.</p>
+    <img src="/img/logo.png" alt="IBDA" style="display:block;margin:0 auto 18px;width:64px;border-radius:50%;">
+    <h1 style="text-align:center;font-size:22px;">Créer mon compte</h1>
+    <p style="text-align:center;color:var(--text-muted);font-size:13.5px;margin-bottom:20px;">Demande le code d'inscription à ton enseignant.</p>
     <form id="formInscription">
-      <input type="text" id="code" placeholder="Code d'inscription (ex: IBDAV1)" required>
+      <input type="text" id="code" placeholder="Code d'inscription" required>
       <input type="text" id="nom" placeholder="Nom complet" required>
       <input type="tel" id="telephone" placeholder="Numéro de téléphone (mobile money)" required>
       <select id="classe" required>
-        <option value="">-- Choisis ta session --</option>
+        <option value="">Choisis ta session</option>
         <option value="S1_MATIN">S1 Matin</option>
         <option value="S2_MATIN">S2 Matin</option>
         <option value="S1_APREM">S1 Après-midi</option>
         <option value="S2_APREM">S2 Après-midi</option>
       </select>
       <input type="password" id="motDePasse" placeholder="Choisis un mot de passe" required>
-      <button type="submit">Créer mon compte</button>
+      <button type="submit" style="margin-top:14px;">Créer mon compte</button>
       <div class="erreur" id="messageErreur"></div>
     </form>
-    <a class="lien" href="/">J'ai déjà un compte, me connecter</a>
+    <p class="lien">Déjà un compte ? <a href="/">Se connecter</a></p>
   </div>
 </div>
 <script src="/js/noyau.js"></script>

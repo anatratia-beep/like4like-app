@@ -10,24 +10,35 @@
 <body>
 <div class="conteneur">
   <div class="entete">
-    <div style="display:flex;align-items:center;gap:8px;">
-      <img src="/img/logo.png" alt="IBDA" style="width:32px;height:32px;border-radius:50%;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <img src="/img/logo.png" alt="IBDA" style="width:28px;height:28px;border-radius:50%;">
       <h2 id="titrePage">Administration</h2>
     </div>
-    <button class="secondaire" style="width:auto;padding:6px 10px;" onclick="activerNotifications()" title="Activer les notifications">🔔</button>
-    <button class="secondaire" style="width:auto;padding:6px 10px;" onclick="deconnexion()">Quitter</button>
+    <div style="display:flex;gap:6px;">
+      <button class="secondaire" style="width:auto;padding:8px;" onclick="activerNotifications()" title="Activer les notifications"></button>
+      <button class="secondaire" style="width:auto;padding:6px 12px;font-size:12.5px;" onclick="deconnexion()">Quitter</button>
+    </div>
   </div>
   <div class="contenu-page" id="contenuPage"></div>
   <div class="nav-bas">
-    <button data-onglet="etudiants" onclick="afficherOngletAdmin('etudiants')">👥<br>Etudiants</button>
-    <button data-onglet="publications" onclick="afficherOngletAdmin('publications')">📰<br>Publications</button>
-    <button data-onglet="messages" onclick="afficherOngletAdmin('messages')">💬<br>Messages</button>
-    <button data-onglet="transactions" onclick="afficherOngletAdmin('transactions')">📜<br>Transactions</button>
-    <button data-onglet="retraits" onclick="afficherOngletAdmin('retraits')">💸<br>Retraits</button>
-    <button data-onglet="reglages" onclick="afficherOngletAdmin('reglages')">⚙️<br>Reglages</button>
+    <button data-onglet="etudiants" onclick="afficherOngletAdmin('etudiants')"><span class="icone-etudiants"></span>Étudiants</button>
+    <button data-onglet="publications" onclick="afficherOngletAdmin('publications')"><span class="icone-fil"></span>Publications</button>
+    <button data-onglet="messages" onclick="afficherOngletAdmin('messages')"><span class="icone-messages"></span>Messages</button>
+    <button data-onglet="transactions" onclick="afficherOngletAdmin('transactions')"><span class="icone-transactions"></span>Transactions</button>
+    <button data-onglet="retraits" onclick="afficherOngletAdmin('retraits')"><span class="icone-retraits"></span>Retraits</button>
+    <button data-onglet="reglages" onclick="afficherOngletAdmin('reglages')"><span class="icone-reglages"></span>Réglages</button>
   </div>
 </div>
 <script src="/js/noyau.js"></script>
 <script src="/js/admin.js"></script>
+<script>
+document.querySelector('.icone-etudiants').innerHTML = ICONES.etudiants;
+document.querySelector('.icone-fil').innerHTML = ICONES.fil;
+document.querySelector('.icone-messages').innerHTML = ICONES.messages;
+document.querySelector('.icone-transactions').innerHTML = ICONES.transactions;
+document.querySelector('.icone-retraits').innerHTML = ICONES.retraits;
+document.querySelector('.icone-reglages').innerHTML = ICONES.reglages;
+document.querySelector('[onclick="activerNotifications()"]').innerHTML = ICONES.cloche;
+</script>
 </body>
 </html>

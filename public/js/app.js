@@ -46,12 +46,12 @@ async function chargerFil() {
       </div>
       <div>${echapper(p.contenu)}</div>
       ${p.lien_url ? `<div><a href="${p.lien_url}" target="_blank">${echapper(p.lien_url)}</a></div>` : ''}
-      <div class="date">👍 ${p.jaime_restants}/${p.quota_jaime} restants • 💬 ${p.commentaire_restants}/${p.quota_commentaire} restants • 🔁 ${p.partage_restants}/${p.quota_partage} restants</div>
+      <div class="date">J'aime ${p.jaime_restants}/${p.quota_jaime} · Commentaires ${p.commentaire_restants}/${p.quota_commentaire} · Partages ${p.partage_restants}/${p.quota_partage}</div>
       ${p.user_id !== moi.id ? `
       <div class="actions-pub">
-        <button onclick="ouvrirPreuve(${p.id}, 'LIKE')" ${p.jaime_restants <= 0 ? 'disabled' : ''}>👍 Like</button>
-        <button class="secondaire" onclick="ouvrirPreuve(${p.id}, 'COMMENTAIRE')" ${p.commentaire_restants <= 0 ? 'disabled' : ''}>💬 Commenter</button>
-        <button class="secondaire" onclick="ouvrirPreuve(${p.id}, 'PARTAGE')" ${p.partage_restants <= 0 ? 'disabled' : ''}>🔁 Partager</button>
+        <button onclick="ouvrirPreuve(${p.id}, 'LIKE')" ${p.jaime_restants <= 0 ? 'disabled' : ''}>${ICONES.coeur} J'aime</button>
+        <button class="secondaire" onclick="ouvrirPreuve(${p.id}, 'COMMENTAIRE')" ${p.commentaire_restants <= 0 ? 'disabled' : ''}>${ICONES.commentaire} Commenter</button>
+        <button class="secondaire" onclick="ouvrirPreuve(${p.id}, 'PARTAGE')" ${p.partage_restants <= 0 ? 'disabled' : ''}>${ICONES.partage} Partager</button>
       </div>` : '<div class="badge">Votre publication</div>'}
     </div>
   `).join('');
@@ -65,7 +65,7 @@ function ouvrirPreuve(publicationId, type) {
   const zone = document.getElementById('contenuPage');
   zone.dataset.retourFil = 'oui';
   zone.innerHTML = `
-    <button class="secondaire" onclick="chargerFil()">&larr; Annuler</button>
+    <button class="secondaire" onclick="chargerFil()">${ICONES.fleche_retour} Annuler</button>
     <h3>Preuve pour ${noms[type]}</h3>
     <p class="date">Fournis soit un lien, soit une capture d'ecran prouvant ton interaction.</p>
     <input type="url" id="preuveLien" placeholder="Lien (ex: capture hebergee, post...)">
@@ -106,9 +106,9 @@ async function chargerPublier() {
       <b>Cout de cette publication : ${t.cout_total} jetons</b>
       <table style="margin-top:8px;">
         <tr><th>Type</th><th>Quota</th><th>Cout/action</th></tr>
-        <tr><td>👍 J'aime</td><td>${t.quota_jaime}</td><td>${t.jetons_par_jaime} jetons</td></tr>
-        <tr><td>💬 Commentaire</td><td>${t.quota_commentaire}</td><td>${t.jetons_par_commentaire} jetons</td></tr>
-        <tr><td>🔁 Partage</td><td>${t.quota_partage}</td><td>${t.jetons_par_partage} jetons</td></tr>
+        <tr><td>J'aime</td><td>${t.quota_jaime}</td><td>${t.jetons_par_jaime} jetons</td></tr>
+        <tr><td>Commentaire</td><td>${t.quota_commentaire}</td><td>${t.jetons_par_commentaire} jetons</td></tr>
+        <tr><td>Partage</td><td>${t.quota_partage}</td><td>${t.jetons_par_partage} jetons</td></tr>
       </table>
       <p class="date">Vous avez actuellement <b>${s.jetons} jetons</b>.</p>
     </div>
@@ -151,8 +151,8 @@ async function chargerAValider() {
         ? `<img src="${i.preuve_url}" style="max-width:100%;border-radius:8px;margin-top:6px;">`
         : `<a href="${i.preuve_url}" target="_blank">Voir la preuve (lien)</a>`}</div>
       <div class="actions-pub" style="width:100%;">
-        <button onclick="validerInteraction(${i.id})">✅ Valider</button>
-        <button class="danger" onclick="rejeterInteraction(${i.id})">❌ Rejeter</button>
+        <button onclick="validerInteraction(${i.id})">${ICONES.valider} Valider</button>
+        <button class="danger" onclick="rejeterInteraction(${i.id})">${ICONES.croix} Rejeter</button>
       </div>
     </div>
   `).join('');
@@ -268,14 +268,14 @@ function demarrerConversation() {
 
 async function ouvrirConversation(contactId, nom) {
   contactActuel = contactId;
-  document.getElementById('titrePage').textContent = `💬 ${nom}`;
+  document.getElementById('titrePage').textContent = nom;
   const zone = document.getElementById('contenuPage');
   zone.innerHTML = `
-    <button class="secondaire" onclick="chargerConversations()">&larr; Retour aux conversations</button>
+    <button class="secondaire" onclick="chargerConversations()">${ICONES.fleche_retour} Retour aux conversations</button>
     <div class="msg-liste" id="listeMessages"></div>
     <div class="barre-envoi">
       <input type="text" id="texteMessage" placeholder="Votre message...">
-      <button onclick="envoyerMessage()">Envoyer</button>
+      <button onclick="envoyerMessage()">${ICONES.envoyer}</button>
     </div>
   `;
   const messages = await api(`/messages/${contactId}`);
@@ -292,7 +292,7 @@ async function envoyerMessage() {
   if (!contenu || !contactActuel) return;
   await api('/messages', 'POST', { receiver_id: contactActuel, contenu });
   input.value = '';
-  ouvrirConversation(contactActuel, document.getElementById('titrePage').textContent.replace('💬 ', ''));
+  ouvrirConversation(contactActuel, document.getElementById('titrePage').textContent);
 }
 
 // ---------- PROFIL ----------

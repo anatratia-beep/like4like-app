@@ -45,9 +45,9 @@ async function chargerPublicationsAdmin() {
           ${p.contenu ? `<div>${echapper(p.contenu)}</div>` : ''}
           ${p.lien_url ? `<div><a href="${p.lien_url}" target="_blank">${echapper(p.lien_url)}</a></div>` : ''}
           <div class="date">
-            👍 ${p.quota_jaime - p.jaime_restants}/${p.quota_jaime} •
-            💬 ${p.quota_commentaire - p.commentaire_restants}/${p.quota_commentaire} •
-            🔁 ${p.quota_partage - p.partage_restants}/${p.quota_partage}
+            J'aime ${p.quota_jaime - p.jaime_restants}/${p.quota_jaime} ·
+            Commentaires ${p.quota_commentaire - p.commentaire_restants}/${p.quota_commentaire} ·
+            Partages ${p.quota_partage - p.partage_restants}/${p.quota_partage}
             &nbsp;•&nbsp; ${p.nb_validees}/${p.nb_interactions} interaction(s) validee(s)
             &nbsp;•&nbsp; cout : ${p.cout_total} jetons
           </div>
@@ -90,15 +90,15 @@ function demarrerConversationAdmin() {
 
 async function ouvrirConversationAdmin(contactId, nom) {
   contactActuelAdmin = contactId;
-  document.getElementById('titrePage').textContent = `💬 ${nom}`;
+  document.getElementById('titrePage').textContent = nom;
   const zone = document.getElementById('contenuPage');
   zone.innerHTML = `
-    <button class="secondaire" onclick="afficherOngletAdmin('messages')">&larr; Retour aux conversations</button>
-    <button style="width:auto;padding:6px 10px;font-size:12px;" onclick="ouvrirCreditManuel(${contactId}, '${echapper(nom)}', () => ouvrirConversationAdmin(${contactId}, '${echapper(nom)}'))">💰 Créditer ${echapper(nom)}</button>
+    <button class="secondaire" onclick="afficherOngletAdmin('messages')">${ICONES.fleche_retour} Retour aux conversations</button>
+    <button style="width:auto;padding:6px 10px;font-size:12px;display:inline-flex;align-items:center;gap:5px;" onclick="ouvrirCreditManuel(${contactId}, '${echapper(nom)}', () => ouvrirConversationAdmin(${contactId}, '${echapper(nom)}'))">${ICONES.piece} Créditer ${echapper(nom)}</button>
     <div class="msg-liste" id="listeMessagesAdmin"></div>
     <div class="barre-envoi" style="max-width:900px;">
       <input type="text" id="texteMessageAdmin" placeholder="Votre message...">
-      <button onclick="envoyerMessageAdmin()">Envoyer</button>
+      <button onclick="envoyerMessageAdmin()">${ICONES.envoyer}</button>
     </div>
   `;
   const messages = await api(`/messages/${contactId}`);
@@ -115,7 +115,7 @@ async function envoyerMessageAdmin() {
   if (!contenu || !contactActuelAdmin) return;
   await api('/messages', 'POST', { receiver_id: contactActuelAdmin, contenu });
   input.value = '';
-  ouvrirConversationAdmin(contactActuelAdmin, document.getElementById('titrePage').textContent.replace('💬 ', ''));
+  ouvrirConversationAdmin(contactActuelAdmin, document.getElementById('titrePage').textContent);
 }
 
 // ---------- ETUDIANTS ----------
@@ -151,7 +151,7 @@ async function chargerEtudiants() {
         <tr>
           <td>${echapper(e.nom)}</td><td>${nomsClasses[e.classe] || '-'}</td><td>${echapper(e.telephone)}</td>
           <td>${e.jetons}</td><td>${e.points}</td><td>${e.solde_ariary}</td>
-          <td>${e.actif ? '✅' : '🚫'}</td>
+          <td>${e.actif ? '<span class="badge VALIDE">Actif</span>' : '<span class="badge REJETE">Inactif</span>'}</td>
           <td>
             <button style="width:auto;padding:4px 8px;font-size:12px;" onclick="ouvrirCreditManuel(${e.id}, '${echapper(e.nom)}')">Crediter</button>
             ${e.role !== 'admin' ? `<button style="width:auto;padding:4px 8px;font-size:12px;" class="secondaire" onclick="basculerActif(${e.id}, ${e.actif})">${e.actif ? 'Desactiver' : 'Reactiver'}</button>` : ''}
@@ -298,9 +298,9 @@ function majApercuCout() {
   const pComm = pointsPour(v('r_jetons_par_commentaire'));
   const pPartage = pointsPour(v('r_jetons_par_partage'));
   document.getElementById('apercuPoints').textContent =
-    `Points gagnes par l'etudiant qui interagit : 👍 ${pJaime} pt • 💬 ${pComm} pt • 🔁 ${pPartage} pt`
+    `Points gagnés par l'étudiant qui interagit : J'aime ${pJaime} pt · Commentaire ${pComm} pt · Partage ${pPartage} pt`
     + (v('r_jetons_par_jaime') > 0 && pJaime === 1 && v('r_jetons_par_jaime') < jetonsParPoint / 2
-      ? ' ⚠️ certaines valeurs sont tres basses par rapport a "jetons par point", tout arrondit au minimum de 1 point.'
+      ? ' — Attention : certaines valeurs sont très basses par rapport à "jetons par point", tout arrondit au minimum de 1 point.'
       : '');
 }
 

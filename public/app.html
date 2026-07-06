@@ -9,29 +9,40 @@
 <body>
 <div class="conteneur">
   <div class="entete">
-    <div style="display:flex;align-items:center;gap:8px;">
-      <img src="/img/logo.png" alt="IBDA" style="width:32px;height:32px;border-radius:50%;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <img src="/img/logo.png" alt="IBDA" style="width:28px;height:28px;border-radius:50%;">
       <h2 id="titrePage">Fil des publications</h2>
     </div>
-    <button class="secondaire" style="width:auto;padding:6px 10px;" onclick="activerNotifications()" title="Activer les notifications">🔔</button>
-    <button class="secondaire" style="width:auto;padding:6px 10px;" onclick="deconnexion()">Quitter</button>
+    <div style="display:flex;gap:6px;">
+      <button class="secondaire" style="width:auto;padding:8px;" onclick="activerNotifications()" title="Activer les notifications"></button>
+      <button class="secondaire" style="width:auto;padding:6px 12px;font-size:12.5px;" onclick="deconnexion()">Quitter</button>
+    </div>
   </div>
-  <div class="solde-bar">
-    <div class="pastille"><div class="valeur" id="soldeJetons">-</div><div class="label">Jetons</div></div>
-    <div class="pastille"><div class="valeur" id="soldePoints">-</div><div class="label">Points</div></div>
-    <div class="pastille"><div class="valeur" id="soldeAriary">-</div><div class="label">Ariary</div></div>
+  <div class="ledger">
+    <div class="poste"><div class="valeur" id="soldeJetons">–</div><div class="label">Jetons</div></div>
+    <div class="poste"><div class="valeur" id="soldePoints">–</div><div class="label">Points</div></div>
+    <div class="poste"><div class="valeur" id="soldeAriary">–</div><div class="label">Ariary</div></div>
   </div>
   <div class="contenu-page" id="contenuPage"></div>
   <div class="nav-bas">
-    <button data-onglet="fil" onclick="afficherOnglet('fil')">📰<br>Fil</button>
-    <button data-onglet="publier" onclick="afficherOnglet('publier')">➕<br>Publier</button>
-    <button data-onglet="valider" onclick="afficherOnglet('valider')">✅<br>A valider</button>
-    <button data-onglet="portefeuille" onclick="afficherOnglet('portefeuille')">💰<br>Portefeuille</button>
-    <button data-onglet="messages" onclick="afficherOnglet('messages')">💬<br>Messages</button>
-    <button data-onglet="profil" onclick="afficherOnglet('profil')">👤<br>Profil</button>
+    <button data-onglet="fil" onclick="afficherOnglet('fil')"><span class="icone-fil"></span>Fil</button>
+    <button data-onglet="publier" onclick="afficherOnglet('publier')"><span class="icone-publier"></span>Publier</button>
+    <button data-onglet="valider" onclick="afficherOnglet('valider')"><span class="icone-valider"></span>À valider</button>
+    <button data-onglet="portefeuille" onclick="afficherOnglet('portefeuille')"><span class="icone-portefeuille"></span>Portefeuille</button>
+    <button data-onglet="messages" onclick="afficherOnglet('messages')"><span class="icone-messages"></span>Messages</button>
+    <button data-onglet="profil" onclick="afficherOnglet('profil')"><span class="icone-profil"></span>Profil</button>
   </div>
 </div>
 <script src="/js/noyau.js"></script>
 <script src="/js/app.js"></script>
+<script>
+document.querySelector('.icone-fil').innerHTML = ICONES.fil;
+document.querySelector('.icone-publier').innerHTML = ICONES.publier;
+document.querySelector('.icone-valider').innerHTML = ICONES.valider;
+document.querySelector('.icone-portefeuille').innerHTML = ICONES.portefeuille;
+document.querySelector('.icone-messages').innerHTML = ICONES.messages;
+document.querySelector('.icone-profil').innerHTML = ICONES.profil;
+document.querySelector('[onclick="activerNotifications()"]').innerHTML = ICONES.cloche;
+</script>
 </body>
 </html>
