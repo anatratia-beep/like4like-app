@@ -39,6 +39,9 @@ module.exports = {
   // Les 4 sessions/classes possibles pour un etudiant
   classesValides: ['S1_MATIN', 'S2_MATIN', 'S1_APREM', 'S2_APREM'],
 
+  // Numero (Mobile Money) vers lequel les etudiants envoient l'argent pour acheter des jetons
+  numeroReceptionParDefaut: process.env.NUMERO_RECEPTION_PAIEMENT || '0340000000',
+
   mvola: {
     env: process.env.MVOLA_ENV || 'sandbox',
     consumerKey: process.env.MVOLA_CONSUMER_KEY || '',

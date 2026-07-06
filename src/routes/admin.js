@@ -108,11 +108,15 @@ router.post('/etudiants/:id/credit-manuel', (req, res) => {
 
 // ---- Reglages economiques ----
 router.get('/reglages', (req, res) => {
-  res.json({ ...getAllSettings(), code_inscription: getTextSetting('code_inscription') });
+  res.json({
+    ...getAllSettings(),
+    code_inscription: getTextSetting('code_inscription'),
+    numero_reception_paiement: getTextSetting('numero_reception_paiement'),
+  });
 });
 
 router.put('/reglages', (req, res) => {
-  const { code_inscription, ...reglagesNumeriques } = req.body;
+  const { code_inscription, numero_reception_paiement, ...reglagesNumeriques } = req.body;
   const maj = db.transaction((entrees) => {
     for (const [key, value] of entrees) {
       db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?').run(
@@ -124,9 +128,21 @@ router.put('/reglages', (req, res) => {
         'code_inscription', code_inscription.trim(), code_inscription.trim()
       );
     }
+    if (numero_reception_paiement && numero_reception_paiement.trim()) {
+      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?').run(
+        'numero_reception_paiement', numero_reception_paiement.trim(), numero_reception_paiement.trim()
+      );
+    }
   });
   maj(Object.entries(reglagesNumeriques));
-  res.json({ ok: true, reglages: { ...getAllSettings(), code_inscription: getTextSetting('code_inscription') } });
+  res.json({
+    ok: true,
+    reglages: {
+      ...getAllSettings(),
+      code_inscription: getTextSetting('code_inscription'),
+      numero_reception_paiement: getTextSetting('numero_reception_paiement'),
+    },
+  });
 });
 
 // ---- Retraits en attente ----

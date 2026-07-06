@@ -119,6 +119,7 @@ for (const [key, value] of Object.entries(config.reglesParDefaut)) {
   insertSetting.run(key, String(value), key);
 }
 insertSetting.run('code_inscription', config.codeInscriptionParDefaut, 'code_inscription');
+insertSetting.run('numero_reception_paiement', config.numeroReceptionParDefaut, 'numero_reception_paiement');
 
 // ---- Compte admin par défaut si aucun admin n'existe ----
 const adminExiste = db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").get();
@@ -142,7 +143,7 @@ function getTextSetting(key) {
 }
 
 function getAllSettings() {
-  const rows = db.prepare("SELECT key, value FROM settings WHERE key != 'code_inscription'").all();
+  const rows = db.prepare("SELECT key, value FROM settings WHERE key NOT IN ('code_inscription', 'numero_reception_paiement')").all();
   const obj = {};
   for (const r of rows) obj[r.key] = Number(r.value);
   return obj;

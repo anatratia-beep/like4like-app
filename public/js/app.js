@@ -176,11 +176,21 @@ async function rejeterInteraction(id) {
 // ---------- PORTEFEUILLE ----------
 async function chargerPortefeuille() {
   const zone = document.getElementById('contenuPage');
-  const [historique, retraits] = await Promise.all([api('/users/me/historique'), api('/wallet/mes-retraits')]);
+  const [historique, retraits, infosPaiement] = await Promise.all([
+    api('/users/me/historique'), api('/wallet/mes-retraits'), api('/wallet/infos-paiement'),
+  ]);
   zone.innerHTML = `
-    <h3>Acheter des jetons (Mobile Money)</h3>
-    <input type="number" id="montantAchat" placeholder="Montant en Ariary (ex: 1000)" min="100">
-    <button onclick="acheterJetons()">Payer via MVola</button>
+    <h3>Acheter des jetons</h3>
+    <div class="carte" style="box-shadow:none;border:1px solid var(--border);padding:14px;margin-bottom:4px;">
+      <p style="margin:0 0 10px;font-size:13.5px;">
+        1. Envoie l'argent via Mobile Money au numéro :
+        <b style="font-family:var(--font-mono);display:block;font-size:16px;margin-top:4px;">${echapper(infosPaiement.numero_reception_paiement || '—')}</b>
+      </p>
+      <p style="margin:0;font-size:13.5px;color:var(--text-muted);">2. Colle ci-dessous la référence reçue par SMS. Tes jetons sont crédités immédiatement.</p>
+    </div>
+    <input type="number" id="montantAchat" placeholder="Montant envoyé en Ariary" min="100">
+    <input type="text" id="referenceAchat" placeholder="Référence reçue par SMS">
+    <button onclick="acheterJetons()">Valider mon paiement</button>
     <div id="messageAchat"></div>
 
     <h3>Convertir des points en Ariary</h3>
@@ -212,10 +222,13 @@ async function chargerPortefeuille() {
 
 async function acheterJetons() {
   const montant = Number(document.getElementById('montantAchat').value);
+  const reference = document.getElementById('referenceAchat').value.trim();
   const msg = document.getElementById('messageAchat');
   try {
-    const r = await api('/wallet/achat-jetons', 'POST', { montant_ariary: montant });
+    const r = await api('/wallet/achat-jetons', 'POST', { montant_ariary: montant, reference });
     msg.innerHTML = `<div class="succes">${r.message}</div>`;
+    majSoldes();
+    chargerPortefeuille();
   } catch (e) { msg.innerHTML = `<div class="erreur">${e.message}</div>`; }
 }
 

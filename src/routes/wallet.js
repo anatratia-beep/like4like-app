@@ -1,9 +1,6 @@
 const express = require('express');
-const { v4: uuidv4 } = require('uuid');
-const { db, getSetting } = require('../db');
-const config = require('../config');
+const { db, getSetting, getTextSetting } = require('../db');
 const { authRequired } = require('../middleware/auth');
-const mvola = require('../services/mvola');
 const push = require('../services/push');
 
 const router = express.Router();
@@ -13,99 +10,65 @@ router.get('/solde', authRequired, (req, res) => {
   res.json(u);
 });
 
-/**
- * 1) L'etudiant demande a acheter des jetons pour un montant en Ariary.
- *    -> on cree une transaction EN_ATTENTE et on initie le paiement MVola.
- *    -> MVola enverra un callback sur /api/wallet/callback-mvola une fois le
- *       paiement confirme par l'etudiant sur son telephone (push USSD).
- */
-router.post('/achat-jetons', authRequired, async (req, res) => {
-  const { montant_ariary } = req.body;
-  const montant = Number(montant_ariary);
-  if (!montant || montant < 100) {
-    return res.status(400).json({ erreur: 'montant_ariary invalide (minimum 100 Ar)' });
-  }
-
-  const reference = `JET-${req.user.id}-${uuidv4().slice(0, 8)}`;
-
-  const insertion = db.prepare(
-    `INSERT INTO transactions (user_id, type, montant_ariary, description, reference_externe, statut)
-     VALUES (?, 'ACHAT_JETONS', ?, ?, ?, 'EN_ATTENTE')`
-  ).run(req.user.id, montant, `Achat de jetons (${montant} Ar)`, reference);
-
-  try {
-    const resultat = await mvola.initierPaiement({
-      montantAriary: montant,
-      debitMsisdn: req.user.telephone,
-      description: `Achat jetons ${montant}Ar`,
-      callbackUrl: `${config.baseUrl}/api/wallet/callback-mvola`,
-      reference,
-    });
-
-    db.prepare('UPDATE transactions SET reference_externe = ? WHERE id = ?').run(
-      resultat.serverCorrelationId || reference,
-      insertion.lastInsertRowid
-    );
-
-    res.json({
-      ok: true,
-      message: 'Demande de paiement envoyee. Validez la transaction sur votre telephone (notification MVola).',
-      reference,
-      serverCorrelationId: resultat.serverCorrelationId,
-    });
-  } catch (e) {
-    db.prepare("UPDATE transactions SET statut = 'ECHEC' WHERE id = ?").run(insertion.lastInsertRowid);
-    console.error('Erreur MVola:', e.message);
-    res.status(502).json({ erreur: "Echec de l'initiation du paiement MVola", detail: e.message });
-  }
+// Numero vers lequel les etudiants doivent envoyer l'argent avant d'acheter des jetons
+router.get('/infos-paiement', authRequired, (req, res) => {
+  res.json({ numero_reception_paiement: getTextSetting('numero_reception_paiement') });
 });
 
 /**
- * 2) Callback MVola : appele par MVola quand le paiement est confirme/echoue.
- *    A SECURISER en production (verifier IP source / signature selon les
- *    consignes du devportal MVola avant le GO LIVE).
+ * Achat de jetons - flux DECLARATIF (tant qu'il n'y a pas de compte marchand MVola/
+ * Orange Money/Airtel Money avec acces API) :
+ *   1) L'etudiant envoie lui-meme l'argent via Mobile Money vers le numero affiche
+ *      dans l'app (reglable par l'admin dans Reglages).
+ *   2) Il colle ici la reference recue par SMS suite a son transfert.
+ *   3) Les jetons sont credites IMMEDIATEMENT, sans intervention de l'admin.
+ *
+ * IMPORTANT - limite technique honnete : sans compte marchand, il n'existe aucun
+ * moyen de verifier par API qu'un paiement a reellement eu lieu. Ce flux fait donc
+ * confiance a la reference saisie par l'etudiant. Pour limiter les abus :
+ *   - toute reference ne peut etre utilisee qu'une seule fois (anti-reutilisation),
+ *   - chaque credit reste visible avec sa reference dans Admin -> Transactions,
+ *   - l'admin peut debiter en un clic (credit-manuel avec un montant negatif) si
+ *     une reference se revele fausse ou reutilisee frauduleusement.
+ * Le jour ou un compte marchand MVola est obtenu, voir src/services/mvola.js pour
+ * repasser a une verification automatique et fiable des paiements.
  */
-router.post('/callback-mvola', express.json(), (req, res) => {
-  console.log('[MVola callback]', JSON.stringify(req.body));
+router.post('/achat-jetons', authRequired, (req, res) => {
+  const { montant_ariary, reference } = req.body;
+  const montant = Number(montant_ariary);
+  const ref = (reference || '').trim();
 
-  const reference =
-    req.body.requestingOrganisationTransactionReference ||
-    req.body.reference ||
-    req.body.serverCorrelationId;
-  const statutMvola = (req.body.status || req.body.transactionStatus || '').toLowerCase();
-
-  const transaction = db
-    .prepare("SELECT * FROM transactions WHERE reference_externe = ? AND statut = 'EN_ATTENTE'")
-    .get(reference);
-
-  if (!transaction) {
-    return res.status(404).json({ erreur: 'Transaction introuvable ou deja traitee' });
+  if (!montant || montant < 100) {
+    return res.status(400).json({ erreur: 'montant_ariary invalide (minimum 100 Ar)' });
+  }
+  if (!ref) {
+    return res.status(400).json({ erreur: 'La reference du transfert Mobile Money est requise' });
   }
 
-  const succes = ['completed', 'success', 'successful'].includes(statutMvola);
-
-  if (succes) {
-    const ariaryParJeton = getSetting('ariary_par_jeton');
-    const jetonsAcredit = Math.floor(transaction.montant_ariary / ariaryParJeton);
-
-    const maj = db.transaction(() => {
-      db.prepare("UPDATE transactions SET statut = 'VALIDE', montant_jetons = ? WHERE id = ?").run(
-        jetonsAcredit,
-        transaction.id
-      );
-      db.prepare('UPDATE users SET jetons = jetons + ? WHERE id = ?').run(jetonsAcredit, transaction.user_id);
-    });
-    maj();
-    push.notifier(transaction.user_id, {
-      titre: '💰 Jetons crédités',
-      corps: `+${jetonsAcredit} jetons suite à votre achat de ${transaction.montant_ariary} Ar.`,
-      url: '/app.html',
-    });
-  } else {
-    db.prepare("UPDATE transactions SET statut = 'ECHEC' WHERE id = ?").run(transaction.id);
+  const dejaUtilisee = db.prepare("SELECT id FROM transactions WHERE reference_externe = ?").get(ref);
+  if (dejaUtilisee) {
+    return res.status(409).json({ erreur: 'Cette reference a deja ete utilisee. Contacte ton enseignant si tu penses que c\'est une erreur.' });
   }
 
-  res.json({ ok: true });
+  const ariaryParJeton = getSetting('ariary_par_jeton');
+  const jetonsAcredit = Math.floor(montant / ariaryParJeton);
+
+  const maj = db.transaction(() => {
+    db.prepare('UPDATE users SET jetons = jetons + ? WHERE id = ?').run(jetonsAcredit, req.user.id);
+    db.prepare(
+      `INSERT INTO transactions (user_id, type, montant_ariary, montant_jetons, description, reference_externe, statut)
+       VALUES (?, 'ACHAT_JETONS', ?, ?, ?, ?, 'VALIDE')`
+    ).run(req.user.id, montant, jetonsAcredit, `Achat declaratif de jetons (${montant} Ar, ref. ${ref})`, ref);
+  });
+  maj();
+
+  push.notifier(req.user.id, {
+    titre: 'Jetons crédités',
+    corps: `+${jetonsAcredit} jetons crédités suite à votre paiement de ${montant} Ar.`,
+    url: '/app.html',
+  });
+
+  res.json({ ok: true, jetons_credites: jetonsAcredit, message: `${jetonsAcredit} jetons ont ete credites immediatement.` });
 });
 
 /**

@@ -253,6 +253,10 @@ async function chargerReglages() {
     <h3>Inscription des étudiants</h3>
     <label>Code d'inscription (à communiquer aux 142 étudiants)</label>
     <input type="text" id="r_code_inscription" value="${reglages.code_inscription || ''}">
+
+    <label>Numéro Mobile Money de réception des paiements</label>
+    <input type="text" id="r_numero_reception" value="${reglages.numero_reception_paiement || ''}">
+    <p class="date">Les étudiants voient ce numéro dans leur portefeuille pour envoyer l'argent avant de coller la référence.</p>
     <p class="date">Les étudiants créent eux-mêmes leur compte sur /inscription.html avec ce code.</p>
 
     <p style="color:var(--muted);font-size:13px;">
@@ -315,6 +319,7 @@ async function enregistrerReglages() {
   const msg = document.getElementById('messageReglages');
   const corps = {
     code_inscription: document.getElementById('r_code_inscription').value.trim(),
+    numero_reception_paiement: document.getElementById('r_numero_reception').value.trim(),
     ariary_par_jeton: Number(document.getElementById('r_ariary_par_jeton').value),
     quota_jaime: Number(document.getElementById('r_quota_jaime').value),
     quota_commentaire: Number(document.getElementById('r_quota_commentaire').value),
