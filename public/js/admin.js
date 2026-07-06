@@ -315,16 +315,26 @@ async function chargerTransactions() {
 async function chargerRetraits() {
   const zone = document.getElementById('contenuPage');
   const retraits = await api('/admin/retraits?statut=EN_ATTENTE');
-  zone.innerHTML = retraits.length === 0 ? '<p>Aucun retrait en attente.</p>' : retraits.map((r) => `
+  zone.innerHTML = `
+    <p class="date">Envoie d'abord l'argent toi-même via Mobile Money, puis renseigne la référence reçue pour confirmer — c'est seulement à ce moment que le solde de l'étudiant est débité.</p>
+    ${retraits.length === 0 ? '<p>Aucun retrait en attente.</p>' : retraits.map((r) => `
     <div class="retrait-item">
-      <span>${echapper(r.nom)} (${echapper(r.classe)}) : ${r.montant_ariary} Ar &rarr; ${echapper(r.telephone_reception)}</span>
+      <span>${echapper(r.nom)} (${nomClasse(r.classe)}) : ${r.montant_ariary} Ar &rarr; ${echapper(r.telephone_reception)}</span>
       <span>
-        <button style="width:auto;padding:4px 8px;font-size:12px;" onclick="marquerPaye(${r.id})">Marquer paye</button>
+        <button style="width:auto;padding:4px 8px;font-size:12px;" onclick="marquerPaye(${r.id})">Confirmer envoyé</button>
         <button style="width:auto;padding:4px 8px;font-size:12px;" class="danger" onclick="rejeterRetrait(${r.id})">Rejeter</button>
       </span>
-    </div>`).join('');
+    </div>`).join('')}
+  `;
 }
-async function marquerPaye(id) { await api(`/admin/retraits/${id}/marquer-paye`, 'POST'); chargerRetraits(); }
+async function marquerPaye(id) {
+  const reference = prompt('Référence du versement effectué (reçue par SMS après ton envoi Mobile Money) :');
+  if (!reference || !reference.trim()) return;
+  try {
+    await api(`/admin/retraits/${id}/marquer-paye`, 'POST', { reference: reference.trim() });
+    chargerRetraits();
+  } catch (e) { alert(e.message); }
+}
 async function rejeterRetrait(id) { await api(`/admin/retraits/${id}/rejeter`, 'POST'); chargerRetraits(); }
 
 // ---------- REGLAGES ----------

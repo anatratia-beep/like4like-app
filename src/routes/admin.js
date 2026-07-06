@@ -154,27 +154,108 @@ router.get('/retraits', (req, res) => {
   res.json(rows);
 });
 
+/**
+ * Confirmer un retrait : exige une reference de preuve (le retrait effectue par
+ * l'admin lui-meme via son app Mobile Money). C'est SEULEMENT a ce moment que
+ * le solde de l'etudiant est reellement debite.
+ */
 router.post('/retraits/:id/marquer-paye', (req, res) => {
+  const { reference } = req.body;
+  const ref = (reference || '').trim();
+  if (!ref) return res.status(400).json({ erreur: 'La reference du versement (preuve) est requise' });
+
   const retrait = db.prepare('SELECT * FROM retraits WHERE id = ?').get(req.params.id);
-  db.prepare("UPDATE retraits SET statut = 'PAYE', traite_at = datetime('now') WHERE id = ?").run(req.params.id);
-  if (retrait) {
-    push.notifier(retrait.user_id, {
-      titre: '✅ Retrait payé',
-      corps: `Votre retrait de ${retrait.montant_ariary} Ar a été envoyé.`,
-      url: '/app.html',
-    });
-  }
+  if (!retrait) return res.status(404).json({ erreur: 'Retrait introuvable' });
+  if (retrait.statut !== 'EN_ATTENTE') return res.status(400).json({ erreur: 'Deja traite' });
+
+  const maj = db.transaction(() => {
+    db.prepare(
+      "UPDATE retraits SET statut = 'PAYE', reference_paiement = ?, traite_at = datetime('now') WHERE id = ?"
+    ).run(ref, retrait.id);
+    db.prepare('UPDATE users SET solde_ariary = solde_ariary - ? WHERE id = ?').run(retrait.montant_ariary, retrait.user_id);
+    db.prepare(
+      "UPDATE transactions SET statut = 'VALIDE' WHERE reference_externe = ?"
+    ).run(`RETRAIT-${retrait.id}`);
+  });
+  maj();
+
+  push.notifier(retrait.user_id, {
+    titre: 'Retrait payé',
+    corps: `Votre retrait de ${retrait.montant_ariary} Ar a été envoyé (réf. ${ref}).`,
+    url: '/app.html',
+  });
+
   res.json({ ok: true });
 });
 
 router.post('/retraits/:id/rejeter', (req, res) => {
   const retrait = db.prepare('SELECT * FROM retraits WHERE id = ?').get(req.params.id);
   if (!retrait) return res.status(404).json({ erreur: 'Retrait introuvable' });
+  if (retrait.statut !== 'EN_ATTENTE') return res.status(400).json({ erreur: 'Deja traite' });
+
+  // Aucun remboursement necessaire : le solde n'a jamais ete debite pour une
+  // demande en attente.
   const maj = db.transaction(() => {
     db.prepare("UPDATE retraits SET statut = 'REJETE', traite_at = datetime('now') WHERE id = ?").run(retrait.id);
-    db.prepare('UPDATE users SET solde_ariary = solde_ariary + ? WHERE id = ?').run(retrait.montant_ariary, retrait.user_id);
+    db.prepare("UPDATE transactions SET statut = 'ECHEC' WHERE reference_externe = ?").run(`RETRAIT-${retrait.id}`);
   });
   maj();
+
+  push.notifier(retrait.user_id, {
+    titre: 'Retrait rejeté',
+    corps: `Votre demande de retrait de ${retrait.montant_ariary} Ar a été rejetée.`,
+    url: '/app.html',
+  });
+
+  res.json({ ok: true });
+});
+
+// ---- Achats de jetons en attente de verification ----
+router.get('/achats-en-attente', (req, res) => {
+  const rows = db
+    .prepare(
+      `SELECT t.*, u.nom, u.classe, u.telephone FROM transactions t
+       JOIN users u ON u.id = t.user_id
+       WHERE t.type = 'ACHAT_JETONS' AND t.statut = 'EN_ATTENTE'
+       ORDER BY t.created_at DESC`
+    )
+    .all();
+  res.json(rows);
+});
+
+router.post('/achats/:id/valider', (req, res) => {
+  const transaction = db.prepare("SELECT * FROM transactions WHERE id = ? AND type = 'ACHAT_JETONS'").get(req.params.id);
+  if (!transaction) return res.status(404).json({ erreur: 'Demande introuvable' });
+  if (transaction.statut !== 'EN_ATTENTE') return res.status(400).json({ erreur: 'Deja traitee' });
+
+  const maj = db.transaction(() => {
+    db.prepare("UPDATE transactions SET statut = 'VALIDE' WHERE id = ?").run(transaction.id);
+    db.prepare('UPDATE users SET jetons = jetons + ? WHERE id = ?').run(transaction.montant_jetons, transaction.user_id);
+  });
+  maj();
+
+  push.notifier(transaction.user_id, {
+    titre: 'Jetons crédités',
+    corps: `+${transaction.montant_jetons} jetons crédités suite à la vérification de votre paiement.`,
+    url: '/app.html',
+  });
+
+  res.json({ ok: true });
+});
+
+router.post('/achats/:id/rejeter', (req, res) => {
+  const transaction = db.prepare("SELECT * FROM transactions WHERE id = ? AND type = 'ACHAT_JETONS'").get(req.params.id);
+  if (!transaction) return res.status(404).json({ erreur: 'Demande introuvable' });
+  if (transaction.statut !== 'EN_ATTENTE') return res.status(400).json({ erreur: 'Deja traitee' });
+
+  db.prepare("UPDATE transactions SET statut = 'ECHEC' WHERE id = ?").run(transaction.id);
+
+  push.notifier(transaction.user_id, {
+    titre: 'Paiement non confirmé',
+    corps: `Votre demande d'achat de jetons (réf. ${transaction.reference_externe}) n'a pas pu être validée.`,
+    url: '/app.html',
+  });
+
   res.json({ ok: true });
 });
 

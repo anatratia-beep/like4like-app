@@ -16,22 +16,17 @@ router.get('/infos-paiement', authRequired, (req, res) => {
 });
 
 /**
- * Achat de jetons - flux DECLARATIF (tant qu'il n'y a pas de compte marchand MVola/
- * Orange Money/Airtel Money avec acces API) :
- *   1) L'etudiant envoie lui-meme l'argent via Mobile Money vers le numero affiche
- *      dans l'app (reglable par l'admin dans Reglages).
- *   2) Il colle ici la reference recue par SMS suite a son transfert.
- *   3) Les jetons sont credites IMMEDIATEMENT, sans intervention de l'admin.
+ * Achat de jetons - flux DECLARATIF AVEC VALIDATION ADMIN OBLIGATOIRE.
  *
- * IMPORTANT - limite technique honnete : sans compte marchand, il n'existe aucun
- * moyen de verifier par API qu'un paiement a reellement eu lieu. Ce flux fait donc
- * confiance a la reference saisie par l'etudiant. Pour limiter les abus :
- *   - toute reference ne peut etre utilisee qu'une seule fois (anti-reutilisation),
- *   - chaque credit reste visible avec sa reference dans Admin -> Transactions,
- *   - l'admin peut debiter en un clic (credit-manuel avec un montant negatif) si
- *     une reference se revele fausse ou reutilisee frauduleusement.
+ * IMPORTANT - lecon retenue : sans compte marchand MVola, une reference saisie par
+ * l'etudiant ne peut PAS etre consideree comme une preuve de paiement (elle peut
+ * etre inventee). Le credit automatique sans verification a ete retire : chaque
+ * demande passe desormais par une validation en un clic par l'administrateur
+ * (Admin -> Achats en attente), qui doit d'abord verifier que l'argent est bien
+ * arrive sur son compte Mobile Money avant de valider.
+ *
  * Le jour ou un compte marchand MVola est obtenu, voir src/services/mvola.js pour
- * repasser a une verification automatique et fiable des paiements.
+ * une verification automatique et fiable des paiements.
  */
 router.post('/achat-jetons', authRequired, (req, res) => {
   const { montant_ariary, reference } = req.body;
@@ -51,24 +46,17 @@ router.post('/achat-jetons', authRequired, (req, res) => {
   }
 
   const ariaryParJeton = getSetting('ariary_par_jeton');
-  const jetonsAcredit = Math.floor(montant / ariaryParJeton);
+  const jetonsPrevus = Math.floor(montant / ariaryParJeton);
 
-  const maj = db.transaction(() => {
-    db.prepare('UPDATE users SET jetons = jetons + ? WHERE id = ?').run(jetonsAcredit, req.user.id);
-    db.prepare(
-      `INSERT INTO transactions (user_id, type, montant_ariary, montant_jetons, description, reference_externe, statut)
-       VALUES (?, 'ACHAT_JETONS', ?, ?, ?, ?, 'VALIDE')`
-    ).run(req.user.id, montant, jetonsAcredit, `Achat declaratif de jetons (${montant} Ar, ref. ${ref})`, ref);
+  db.prepare(
+    `INSERT INTO transactions (user_id, type, montant_ariary, montant_jetons, description, reference_externe, statut)
+     VALUES (?, 'ACHAT_JETONS', ?, ?, ?, ?, 'EN_ATTENTE')`
+  ).run(req.user.id, montant, jetonsPrevus, `Achat declare de jetons (${montant} Ar, ref. ${ref}) - en attente de verification`, ref);
+
+  res.json({
+    ok: true,
+    message: `Demande enregistree (${jetonsPrevus} jetons prevus). Elle sera validee par l'administrateur apres verification de la reception du paiement.`,
   });
-  maj();
-
-  push.notifier(req.user.id, {
-    titre: 'Jetons crédités',
-    corps: `+${jetonsAcredit} jetons crédités suite à votre paiement de ${montant} Ar.`,
-    url: '/app.html',
-  });
-
-  res.json({ ok: true, jetons_credites: jetonsAcredit, message: `${jetonsAcredit} jetons ont ete credites immediatement.` });
 });
 
 /**
@@ -112,26 +100,39 @@ router.post('/convertir-points', authRequired, (req, res) => {
  * MVola "disbursement" distinct (a demander a MVola). En attendant, la
  * demande est validee manuellement par l'admin (voir routes/admin.js).
  */
+/**
+ * Demande de retrait - AUCUN DEBIT IMMEDIAT.
+ * Le solde n'est debite qu'au moment ou l'admin confirme avoir reellement envoye
+ * l'argent (avec une reference de preuve) via /admin/retraits/:id/marquer-paye.
+ * Ici, on verifie seulement que le solde disponible (solde actuel moins les
+ * demandes deja en attente) couvre bien cette nouvelle demande.
+ */
 router.post('/retrait', authRequired, (req, res) => {
   const { montant_ariary, telephone_reception } = req.body;
   const montant = Number(montant_ariary);
   if (!montant || montant <= 0) return res.status(400).json({ erreur: 'montant_ariary invalide' });
   if (!telephone_reception) return res.status(400).json({ erreur: 'telephone_reception requis' });
-  if (montant > req.user.solde_ariary) return res.status(400).json({ erreur: 'Solde insuffisant' });
 
-  const maj = db.transaction(() => {
-    db.prepare('UPDATE users SET solde_ariary = solde_ariary - ? WHERE id = ?').run(montant, req.user.id);
-    db.prepare(
-      `INSERT INTO retraits (user_id, montant_ariary, telephone_reception) VALUES (?, ?, ?)`
-    ).run(req.user.id, montant, telephone_reception);
-    db.prepare(
-      `INSERT INTO transactions (user_id, type, montant_ariary, description, statut)
-       VALUES (?, 'RETRAIT', ?, ?, 'EN_ATTENTE')`
-    ).run(req.user.id, -montant, `Demande de retrait vers ${telephone_reception}`);
-  });
-  maj();
+  const enAttente = db
+    .prepare("SELECT COALESCE(SUM(montant_ariary), 0) AS total FROM retraits WHERE user_id = ? AND statut = 'EN_ATTENTE'")
+    .get(req.user.id).total;
 
-  res.json({ ok: true, message: 'Demande de retrait enregistree, en attente de traitement par l\'administrateur.' });
+  if (montant + enAttente > req.user.solde_ariary) {
+    return res.status(400).json({
+      erreur: `Solde insuffisant. Solde : ${req.user.solde_ariary} Ar, deja ${enAttente} Ar en attente de traitement.`,
+    });
+  }
+
+  const insertion = db.prepare(
+    `INSERT INTO retraits (user_id, montant_ariary, telephone_reception) VALUES (?, ?, ?)`
+  ).run(req.user.id, montant, telephone_reception);
+
+  db.prepare(
+    `INSERT INTO transactions (user_id, type, montant_ariary, description, reference_externe, statut)
+     VALUES (?, 'RETRAIT', ?, ?, ?, 'EN_ATTENTE')`
+  ).run(req.user.id, -montant, `Demande de retrait vers ${telephone_reception}`, `RETRAIT-${insertion.lastInsertRowid}`);
+
+  res.json({ ok: true, message: 'Demande de retrait enregistree. Le solde sera debite une fois le versement confirme par l\'administrateur.' });
 });
 
 router.get('/mes-retraits', authRequired, (req, res) => {

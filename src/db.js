@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS retraits (
   montant_ariary INTEGER NOT NULL,
   telephone_reception TEXT NOT NULL,
   statut TEXT NOT NULL DEFAULT 'EN_ATTENTE', -- EN_ATTENTE | PAYE | REJETE
+  reference_paiement TEXT,   -- preuve (reference MVola) du versement reel, saisie par l'admin
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   traite_at TEXT
 );
@@ -120,6 +121,14 @@ for (const [key, value] of Object.entries(config.reglesParDefaut)) {
 }
 insertSetting.run('code_inscription', config.codeInscriptionParDefaut, 'code_inscription');
 insertSetting.run('numero_reception_paiement', config.numeroReceptionParDefaut, 'numero_reception_paiement');
+
+// Migration idempotente : ajoute la colonne si la base existait deja sans elle
+// (par ex. deploiement Render deja en place avant cet ajout).
+try {
+  db.exec('ALTER TABLE retraits ADD COLUMN reference_paiement TEXT');
+} catch (e) {
+  // La colonne existe deja : rien a faire.
+}
 
 // ---- Compte admin par défaut si aucun admin n'existe ----
 const adminExiste = db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").get();
