@@ -8,6 +8,12 @@ function nomClasse(code) {
   return noms[code] || code || '';
 }
 
+function majAvatarEntete(photoUrl) {
+  const img = document.getElementById('avatarEntete');
+  if (!img) return;
+  img.src = photoUrl || '/img/logo.png';
+}
+
 async function majSoldes() {
   try {
     const s = await api('/wallet/solde');
@@ -419,8 +425,11 @@ function validerEditeurPhoto() {
     formData.append('photo', blob, 'profil.jpg');
     const msg = document.getElementById('messagePhoto');
     try {
-      await api('/users/me/photo', 'PUT', formData, true);
+      const r = await api('/users/me/photo', 'PUT', formData, true);
       msg.innerHTML = '<div class="succes">Photo mise à jour.</div>';
+      moi.photo_url = r.photo_url;
+      localStorage.setItem('utilisateur', JSON.stringify(moi));
+      majAvatarEntete(moi.photo_url);
       annulerEditeurPhoto();
       chargerProfil();
     } catch (e) { msg.innerHTML = `<div class="erreur">${e.message}</div>`; }
@@ -439,3 +448,4 @@ async function changerMotDePasse() {
 
 afficherOnglet('fil');
 initNotificationsSiDejaActivees();
+majAvatarEntete(moi.photo_url);
