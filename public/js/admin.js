@@ -46,6 +46,7 @@ async function rejeterAchat(id) {
 }
 
 const NOMS_CLASSES = { S1_MATIN: 'S1 Matin', S2_MATIN: 'S2 Matin', S1_APREM: 'S1 Après-midi', S2_APREM: 'S2 Après-midi' };
+function nomClasse(code) { return NOMS_CLASSES[code] || code || '—'; }
 
 // ---------- PUBLICATIONS PAR CLASSE ----------
 async function chargerPublicationsAdmin() {
