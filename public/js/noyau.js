@@ -46,7 +46,11 @@ function echapper(texte) {
   return div.innerHTML;
 }
 
-// ---------- ICÔNES (remplacent les emojis pour un rendu sobre et professionnel) ----------
+// ---------- EMOJIS COURANTS (pour la messagerie) ----------
+const EMOJIS_MESSAGERIE = [
+  '😀','😂','😍','🥰','😊','😉','😎','🤔','😢','😭','😡','😱','👍','👎','🙏','👏',
+  '💪','🔥','🎉','❤️','💛','💯','✅','❌','👋','😴','🤝','🙌','😅','🥳','😇','🤗',
+];
 const ICONES = {
   fil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"></rect><rect x="3" y="11" width="18" height="4" rx="1"></rect><rect x="3" y="18" width="10" height="3" rx="1"></rect></svg>',
   publier: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>',
@@ -66,6 +70,7 @@ const ICONES = {
   envoyer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"></path></svg>',
   croix: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>',
   piece: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v10M9 9.5c0-1.4 1.3-2.5 3-2.5s3 .9 3 2c0 3-6 1.5-6 4.5 0 1.1 1.3 2 3 2s3-1.1 3-2.5"></path></svg>',
+  smiley: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M8.5 14.5s1.5 2 3.5 2 3.5-2 3.5-2"></path><path d="M9 9.5h.01M15 9.5h.01"></path></svg>',
 };
 
 // ---------- NOTIFICATIONS PUSH ----------

@@ -24,6 +24,7 @@ async function majSoldes() {
 }
 
 function afficherOnglet(nom) {
+  if (nom !== 'messages') arreterActualisationMessages();
   ongletActuel = nom;
   document.querySelectorAll('.nav-bas button').forEach((b) =>
     b.classList.toggle('actif', b.dataset.onglet === nom)
@@ -257,6 +258,7 @@ async function demanderRetrait() {
 
 // ---------- MESSAGES ----------
 async function chargerConversations() {
+  arreterActualisationMessages();
   const zone = document.getElementById('contenuPage');
   const [conversations, tousUtilisateurs] = await Promise.all([api('/messages/conversations'), api('/users')]);
   const idsAvecConv = new Set(conversations.map((c) => c.contact_id));
@@ -285,7 +287,11 @@ function demarrerConversation() {
   ouvrirConversation(Number(select.value), select.options[select.selectedIndex].dataset.nom);
 }
 
+let intervalleMessages = null;
+let nbMessagesAffiches = 0;
+
 async function ouvrirConversation(contactId, nom) {
+  arreterActualisationMessages();
   contactActuel = contactId;
   document.getElementById('titrePage').textContent = nom;
   const zone = document.getElementById('contenuPage');
@@ -293,25 +299,68 @@ async function ouvrirConversation(contactId, nom) {
     <button class="secondaire" onclick="chargerConversations()">${ICONES.fleche_retour} Retour aux conversations</button>
     <div class="msg-liste" id="listeMessages"></div>
     <div class="barre-envoi">
-      <input type="text" id="texteMessage" placeholder="Votre message...">
+      <button type="button" class="bouton-emoji" onclick="basculerPanneauEmojis()">${ICONES.smiley}</button>
+      <input type="text" id="texteMessage" placeholder="Votre message..." onkeydown="if(event.key==='Enter'){event.preventDefault();envoyerMessage();}">
       <button onclick="envoyerMessage()">${ICONES.envoyer}</button>
     </div>
   `;
-  const messages = await api(`/messages/${contactId}`);
+  nbMessagesAffiches = 0;
+  await actualiserMessages(true);
+  intervalleMessages = setInterval(() => actualiserMessages(false), 3000);
+}
+
+async function actualiserMessages(forcerScroll) {
+  if (!contactActuel) return;
   const liste = document.getElementById('listeMessages');
+  if (!liste) return;
+  const messages = await api(`/messages/${contactActuel}`);
+  if (messages.length === nbMessagesAffiches) return;
+  nbMessagesAffiches = messages.length;
+  const enBas = forcerScroll || (liste.scrollHeight - liste.scrollTop - liste.clientHeight < 60);
   liste.innerHTML = messages.map((m) => `
     <div class="bulle ${m.sender_id === moi.id ? 'moi' : 'autre'}">${echapper(m.contenu)}</div>
   `).join('');
-  liste.scrollTop = liste.scrollHeight;
+  if (enBas) liste.scrollTop = liste.scrollHeight;
+}
+
+function arreterActualisationMessages() {
+  if (intervalleMessages) { clearInterval(intervalleMessages); intervalleMessages = null; }
+  fermerPanneauEmojis();
+}
+
+function basculerPanneauEmojis() {
+  const existant = document.getElementById('panneauEmojis');
+  if (existant) { existant.remove(); return; }
+  const panneau = document.createElement('div');
+  panneau.id = 'panneauEmojis';
+  panneau.className = 'panneau-emojis';
+  panneau.innerHTML = EMOJIS_MESSAGERIE.map((e) => `<button type="button" onclick="insererEmoji('${e}')">${e}</button>`).join('');
+  document.body.appendChild(panneau);
+}
+
+function fermerPanneauEmojis() {
+  const existant = document.getElementById('panneauEmojis');
+  if (existant) existant.remove();
+}
+
+function insererEmoji(emoji) {
+  const input = document.getElementById('texteMessage');
+  if (!input) return;
+  const debut = input.selectionStart ?? input.value.length;
+  const fin = input.selectionEnd ?? input.value.length;
+  input.value = input.value.slice(0, debut) + emoji + input.value.slice(fin);
+  input.focus();
+  input.selectionStart = input.selectionEnd = debut + emoji.length;
 }
 
 async function envoyerMessage() {
   const input = document.getElementById('texteMessage');
   const contenu = input.value.trim();
   if (!contenu || !contactActuel) return;
-  await api('/messages', 'POST', { receiver_id: contactActuel, contenu });
+  fermerPanneauEmojis();
   input.value = '';
-  ouvrirConversation(contactActuel, document.getElementById('titrePage').textContent);
+  await api('/messages', 'POST', { receiver_id: contactActuel, contenu });
+  await actualiserMessages(true);
 }
 
 // ---------- PROFIL ----------

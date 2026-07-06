@@ -171,8 +171,19 @@ button.accent { background: var(--accent); border-color: var(--accent); }
 .bulle.autre { align-self: flex-start; background: var(--surface-muted); color: var(--text); border-bottom-left-radius: 4px; }
 .barre-envoi { display: flex; gap: 8px; padding: 10px; position: fixed; bottom: 56px; left: 0; right: 0; max-width: 480px; margin: 0 auto; background: var(--surface); border-top: 1px solid var(--border); }
 .barre-envoi input { flex: 1; margin: 0; }
-.barre-envoi button { width: auto; padding: 10px 16px; margin: 0; display: flex; align-items: center; }
+.barre-envoi button { width: auto; padding: 10px 14px; margin: 0; display: flex; align-items: center; }
 .barre-envoi button svg { width: 16px; height: 16px; }
+.bouton-emoji { background: var(--surface-muted) !important; color: var(--text) !important; border: 1px solid var(--border-strong) !important; }
+
+.panneau-emojis {
+  position: fixed; bottom: 106px; left: 50%; transform: translateX(-50%); max-width: 460px; width: calc(100% - 24px);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md);
+  padding: 10px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; z-index: 20;
+}
+.panneau-emojis button {
+  background: none !important; border: none !important; font-size: 20px; padding: 6px; width: auto; color: inherit;
+}
+.panneau-emojis button:hover { background: var(--surface-muted) !important; border-radius: var(--radius-sm); }
 
 .photo-profil { width: 76px; height: 76px; border-radius: 50%; object-fit: cover; background: var(--surface-muted); display: block; margin: 0 auto 14px; border: 1px solid var(--border); }
 a { color: var(--accent-strong); text-decoration: none; }

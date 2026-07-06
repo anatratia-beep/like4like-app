@@ -22,6 +22,7 @@
   <div class="contenu-page" id="contenuPage"></div>
   <div class="nav-bas">
     <button data-onglet="etudiants" onclick="afficherOngletAdmin('etudiants')"><span class="icone-etudiants"></span>Étudiants</button>
+    <button data-onglet="achats" onclick="afficherOngletAdmin('achats')"><span class="icone-piece"></span>Achats</button>
     <button data-onglet="publications" onclick="afficherOngletAdmin('publications')"><span class="icone-fil"></span>Publications</button>
     <button data-onglet="messages" onclick="afficherOngletAdmin('messages')"><span class="icone-messages"></span>Messages</button>
     <button data-onglet="transactions" onclick="afficherOngletAdmin('transactions')"><span class="icone-transactions"></span>Transactions</button>
@@ -33,6 +34,7 @@
 <script src="/js/admin.js"></script>
 <script>
 document.querySelector('.icone-etudiants').innerHTML = ICONES.etudiants;
+document.querySelector('.icone-piece').innerHTML = ICONES.piece;
 document.querySelector('.icone-fil').innerHTML = ICONES.fil;
 document.querySelector('.icone-messages').innerHTML = ICONES.messages;
 document.querySelector('.icone-transactions').innerHTML = ICONES.transactions;

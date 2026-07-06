@@ -3,10 +3,46 @@ const moiAdmin = utilisateurCourant();
 if (!moiAdmin || moiAdmin.role !== 'admin') window.location.href = '/app.html';
 
 function afficherOngletAdmin(nom) {
+  if (nom !== 'messages') arreterActualisationMessagesAdmin();
   document.querySelectorAll('.nav-bas button').forEach((b) => b.classList.toggle('actif', b.dataset.onglet === nom));
-  const titres = { etudiants: 'Gestion des etudiants', publications: 'Publications par classe', messages: 'Messages avec les etudiants', transactions: 'Toutes les transactions', retraits: 'Retraits a traiter', reglages: 'Reglages economiques' };
+  const titres = { etudiants: 'Gestion des etudiants', achats: 'Achats de jetons à vérifier', publications: 'Publications par classe', messages: 'Messages avec les etudiants', transactions: 'Toutes les transactions', retraits: 'Retraits a traiter', reglages: 'Reglages economiques' };
   document.getElementById('titrePage').textContent = titres[nom];
-  ({ etudiants: chargerEtudiants, publications: chargerPublicationsAdmin, messages: chargerConversationsAdmin, transactions: chargerTransactions, retraits: chargerRetraits, reglages: chargerReglages })[nom]();
+  ({ etudiants: chargerEtudiants, achats: chargerAchatsEnAttente, publications: chargerPublicationsAdmin, messages: chargerConversationsAdmin, transactions: chargerTransactions, retraits: chargerRetraits, reglages: chargerReglages })[nom]();
+}
+
+// ---------- ACHATS DE JETONS EN ATTENTE ----------
+async function chargerAchatsEnAttente() {
+  const zone = document.getElementById('contenuPage');
+  zone.innerHTML = 'Chargement...';
+  const achats = await api('/admin/achats-en-attente');
+  if (achats.length === 0) {
+    zone.innerHTML = '<p>Aucun achat en attente de vérification.</p>';
+    return;
+  }
+  zone.innerHTML = `
+    <p class="date">Vérifie d'abord dans ton application Mobile Money que l'argent est bien arrivé (montant + référence), avant de valider.</p>
+    ${achats.map((a) => `
+      <div class="interaction-item" style="flex-direction:column;align-items:flex-start;">
+        <div><b>${echapper(a.nom)}</b> (${nomClasse(a.classe)}) · ${echapper(a.telephone)}</div>
+        <div class="date">Montant déclaré : <b style="font-family:var(--font-mono);">${a.montant_ariary} Ar</b> → ${a.montant_jetons} jetons</div>
+        <div class="date">Référence fournie : <b style="font-family:var(--font-mono);">${echapper(a.reference_externe)}</b></div>
+        <div class="date">${formaterDate(a.created_at)}</div>
+        <div class="actions-pub" style="width:100%;">
+          <button onclick="validerAchat(${a.id})">${ICONES.valider} Confirmer reçu</button>
+          <button class="danger" onclick="rejeterAchat(${a.id})">${ICONES.croix} Rejeter</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+async function validerAchat(id) {
+  try { await api(`/admin/achats/${id}/valider`, 'POST'); chargerAchatsEnAttente(); }
+  catch (e) { alert(e.message); }
+}
+async function rejeterAchat(id) {
+  try { await api(`/admin/achats/${id}/rejeter`, 'POST'); chargerAchatsEnAttente(); }
+  catch (e) { alert(e.message); }
 }
 
 const NOMS_CLASSES = { S1_MATIN: 'S1 Matin', S2_MATIN: 'S2 Matin', S1_APREM: 'S1 Après-midi', S2_APREM: 'S2 Après-midi' };
@@ -60,6 +96,7 @@ async function chargerPublicationsAdmin() {
 let contactActuelAdmin = null;
 
 async function chargerConversationsAdmin() {
+  arreterActualisationMessagesAdmin();
   const zone = document.getElementById('contenuPage');
   const [conversations, tousUtilisateurs] = await Promise.all([api('/messages/conversations'), api('/users')]);
   const idsAvecConv = new Set(conversations.map((c) => c.contact_id));
@@ -88,7 +125,11 @@ function demarrerConversationAdmin() {
   ouvrirConversationAdmin(Number(select.value), select.options[select.selectedIndex].dataset.nom);
 }
 
+let intervalleMessagesAdmin = null;
+let nbMessagesAffichesAdmin = 0;
+
 async function ouvrirConversationAdmin(contactId, nom) {
+  arreterActualisationMessagesAdmin();
   contactActuelAdmin = contactId;
   document.getElementById('titrePage').textContent = nom;
   const zone = document.getElementById('contenuPage');
@@ -101,25 +142,66 @@ async function ouvrirConversationAdmin(contactId, nom) {
     </div>
     <div class="msg-liste" id="listeMessagesAdmin"></div>
     <div class="barre-envoi" style="max-width:900px;">
-      <input type="text" id="texteMessageAdmin" placeholder="Votre message...">
+      <button type="button" class="bouton-emoji" onclick="basculerPanneauEmojisAdmin()">${ICONES.smiley}</button>
+      <input type="text" id="texteMessageAdmin" placeholder="Votre message..." onkeydown="if(event.key==='Enter'){event.preventDefault();envoyerMessageAdmin();}">
       <button onclick="envoyerMessageAdmin()">${ICONES.envoyer}</button>
     </div>
   `;
-  const messages = await api(`/messages/${contactId}`);
+  nbMessagesAffichesAdmin = 0;
+  await actualiserMessagesAdmin(true);
+  intervalleMessagesAdmin = setInterval(() => actualiserMessagesAdmin(false), 3000);
+}
+
+async function actualiserMessagesAdmin(forcerScroll) {
+  if (!contactActuelAdmin) return;
   const liste = document.getElementById('listeMessagesAdmin');
+  if (!liste) return;
+  const messages = await api(`/messages/${contactActuelAdmin}`);
+  if (messages.length === nbMessagesAffichesAdmin) return;
+  nbMessagesAffichesAdmin = messages.length;
+  const enBas = forcerScroll || (liste.scrollHeight - liste.scrollTop - liste.clientHeight < 60);
   liste.innerHTML = messages.map((m) => `
     <div class="bulle ${m.sender_id === moiAdmin.id ? 'moi' : 'autre'}">${echapper(m.contenu)}</div>
   `).join('');
-  liste.scrollTop = liste.scrollHeight;
+  if (enBas) liste.scrollTop = liste.scrollHeight;
+}
+
+function arreterActualisationMessagesAdmin() {
+  if (intervalleMessagesAdmin) { clearInterval(intervalleMessagesAdmin); intervalleMessagesAdmin = null; }
+  const panneau = document.getElementById('panneauEmojis');
+  if (panneau) panneau.remove();
+}
+
+function basculerPanneauEmojisAdmin() {
+  const existant = document.getElementById('panneauEmojis');
+  if (existant) { existant.remove(); return; }
+  const panneau = document.createElement('div');
+  panneau.id = 'panneauEmojis';
+  panneau.className = 'panneau-emojis';
+  panneau.style.maxWidth = '400px';
+  panneau.innerHTML = EMOJIS_MESSAGERIE.map((e) => `<button type="button" onclick="insererEmojiAdmin('${e}')">${e}</button>`).join('');
+  document.body.appendChild(panneau);
+}
+
+function insererEmojiAdmin(emoji) {
+  const input = document.getElementById('texteMessageAdmin');
+  if (!input) return;
+  const debut = input.selectionStart ?? input.value.length;
+  const fin = input.selectionEnd ?? input.value.length;
+  input.value = input.value.slice(0, debut) + emoji + input.value.slice(fin);
+  input.focus();
+  input.selectionStart = input.selectionEnd = debut + emoji.length;
 }
 
 async function envoyerMessageAdmin() {
   const input = document.getElementById('texteMessageAdmin');
   const contenu = input.value.trim();
   if (!contenu || !contactActuelAdmin) return;
-  await api('/messages', 'POST', { receiver_id: contactActuelAdmin, contenu });
+  const panneau = document.getElementById('panneauEmojis');
+  if (panneau) panneau.remove();
   input.value = '';
-  ouvrirConversationAdmin(contactActuelAdmin, document.getElementById('titrePage').textContent);
+  await api('/messages', 'POST', { receiver_id: contactActuelAdmin, contenu });
+  await actualiserMessagesAdmin(true);
 }
 
 // ---------- ETUDIANTS ----------
