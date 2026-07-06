@@ -14,7 +14,7 @@
       <h2 id="titrePage">Fil des publications</h2>
     </div>
     <div style="display:flex;gap:6px;">
-      <button class="secondaire" style="width:auto;padding:8px;" onclick="activerNotifications()" title="Activer les notifications"></button>
+      <button class="secondaire" style="width:auto;padding:6px 10px;font-size:9px;flex-direction:column;gap:2px;line-height:1;" onclick="activerNotifications()" title="Recevoir une alerte a chaque credit, debit ou message"></button>
       <button class="secondaire" style="width:auto;padding:6px 12px;font-size:12.5px;" onclick="deconnexion()">Quitter</button>
     </div>
   </div>
@@ -42,7 +42,7 @@ document.querySelector('.icone-valider').innerHTML = ICONES.valider;
 document.querySelector('.icone-portefeuille').innerHTML = ICONES.portefeuille;
 document.querySelector('.icone-messages').innerHTML = ICONES.messages;
 document.querySelector('.icone-profil').innerHTML = ICONES.profil;
-document.querySelector('[onclick="activerNotifications()"]').innerHTML = ICONES.cloche;
+document.querySelector('[onclick="activerNotifications()"]').innerHTML = ICONES.cloche + '<span style="text-transform:uppercase;letter-spacing:0.03em;">Notifications</span>';
 </script>
 </body>
 </html>

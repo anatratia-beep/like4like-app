@@ -94,7 +94,11 @@ async function ouvrirConversationAdmin(contactId, nom) {
   const zone = document.getElementById('contenuPage');
   zone.innerHTML = `
     <button class="secondaire" onclick="afficherOngletAdmin('messages')">${ICONES.fleche_retour} Retour aux conversations</button>
-    <button style="width:auto;padding:6px 10px;font-size:12px;display:inline-flex;align-items:center;gap:5px;" onclick="ouvrirCreditManuel(${contactId}, '${echapper(nom)}', () => ouvrirConversationAdmin(${contactId}, '${echapper(nom)}'))">${ICONES.piece} Créditer ${echapper(nom)}</button>
+    <div style="display:flex;gap:6px;margin:4px 0 10px;">
+      <button style="width:auto;padding:6px 10px;font-size:11.5px;" onclick="crediterType(${contactId}, '${echapper(nom)}', 'jetons', () => ouvrirConversationAdmin(${contactId}, '${echapper(nom)}'))">+ Jetons</button>
+      <button style="width:auto;padding:6px 10px;font-size:11.5px;" onclick="crediterType(${contactId}, '${echapper(nom)}', 'points', () => ouvrirConversationAdmin(${contactId}, '${echapper(nom)}'))">+ Points</button>
+      <button style="width:auto;padding:6px 10px;font-size:11.5px;" onclick="crediterType(${contactId}, '${echapper(nom)}', 'ariary', () => ouvrirConversationAdmin(${contactId}, '${echapper(nom)}'))">+ Ariary</button>
+    </div>
     <div class="msg-liste" id="listeMessagesAdmin"></div>
     <div class="barre-envoi" style="max-width:900px;">
       <input type="text" id="texteMessageAdmin" placeholder="Votre message...">
@@ -153,7 +157,9 @@ async function chargerEtudiants() {
           <td>${e.jetons}</td><td>${e.points}</td><td>${e.solde_ariary}</td>
           <td>${e.actif ? '<span class="badge VALIDE">Actif</span>' : '<span class="badge REJETE">Inactif</span>'}</td>
           <td>
-            <button style="width:auto;padding:4px 8px;font-size:12px;" onclick="ouvrirCreditManuel(${e.id}, '${echapper(e.nom)}')">Crediter</button>
+            <button style="width:auto;padding:4px 7px;font-size:11px;" title="Créditer des jetons" onclick="crediterType(${e.id}, '${echapper(e.nom)}', 'jetons')">+J</button>
+            <button style="width:auto;padding:4px 7px;font-size:11px;" title="Créditer des points" onclick="crediterType(${e.id}, '${echapper(e.nom)}', 'points')">+P</button>
+            <button style="width:auto;padding:4px 7px;font-size:11px;" title="Créditer de l'Ariary" onclick="crediterType(${e.id}, '${echapper(e.nom)}', 'ariary')">+A</button>
             ${e.role !== 'admin' ? `<button style="width:auto;padding:4px 8px;font-size:12px;" class="secondaire" onclick="basculerActif(${e.id}, ${e.actif})">${e.actif ? 'Desactiver' : 'Reactiver'}</button>` : ''}
           </td>
         </tr>`).join('')}
@@ -191,12 +197,13 @@ async function basculerActif(id, actifActuel) {
   chargerEtudiants();
 }
 
-function ouvrirCreditManuel(id, nom, apresSucces) {
-  const jetons = Number(prompt(`Jetons a ajouter pour ${nom} (peut etre negatif) :`, '0')) || 0;
-  const points = Number(prompt(`Points a ajouter pour ${nom} :`, '0')) || 0;
-  const ariary = Number(prompt(`Ariary a ajouter pour ${nom} :`, '0')) || 0;
-  if (jetons === 0 && points === 0 && ariary === 0) return;
-  api(`/admin/etudiants/${id}/credit-manuel`, 'POST', { jetons, points, ariary, description: `Ajustement manuel admin pour ${nom}` })
+function crediterType(id, nom, type, apresSucces) {
+  const libelles = { jetons: 'jetons', points: 'points', ariary: 'Ariary' };
+  const montant = Number(prompt(`Montant de ${libelles[type]} pour ${nom} (peut être négatif) :`, '0'));
+  if (!montant) return;
+  const corps = { jetons: 0, points: 0, ariary: 0, description: `Ajustement ${libelles[type]} manuel admin pour ${nom}` };
+  corps[type] = montant;
+  api(`/admin/etudiants/${id}/credit-manuel`, 'POST', corps)
     .then(() => { if (apresSucces) apresSucces(); else chargerEtudiants(); })
     .catch((e) => alert(e.message));
 }
