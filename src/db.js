@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const Database = require('better-sqlite3');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -97,6 +98,17 @@ CREATE TABLE IF NOT EXISTS retraits (
   traite_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS sms_recus (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL,          -- RECU (argent recu) | TRANSFERE (argent envoye)
+  montant INTEGER NOT NULL,
+  telephone TEXT,
+  reference TEXT NOT NULL UNIQUE,
+  texte_brut TEXT,
+  consomme INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL REFERENCES users(id),
@@ -121,6 +133,7 @@ for (const [key, value] of Object.entries(config.reglesParDefaut)) {
 }
 insertSetting.run('code_inscription', config.codeInscriptionParDefaut, 'code_inscription');
 insertSetting.run('numero_reception_paiement', config.numeroReceptionParDefaut, 'numero_reception_paiement');
+insertSetting.run('sms_gateway_secret', crypto.randomBytes(16).toString('hex'), 'sms_gateway_secret');
 
 // Migration idempotente : ajoute la colonne si la base existait deja sans elle
 // (par ex. deploiement Render deja en place avant cet ajout).
@@ -152,7 +165,7 @@ function getTextSetting(key) {
 }
 
 function getAllSettings() {
-  const rows = db.prepare("SELECT key, value FROM settings WHERE key NOT IN ('code_inscription', 'numero_reception_paiement')").all();
+  const rows = db.prepare("SELECT key, value FROM settings WHERE key NOT IN ('code_inscription', 'numero_reception_paiement', 'sms_gateway_secret')").all();
   const obj = {};
   for (const r of rows) obj[r.key] = Number(r.value);
   return obj;

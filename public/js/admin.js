@@ -393,8 +393,33 @@ async function rejeterRetrait(id) { await api(`/admin/retraits/${id}/rejeter`, '
 // ---------- REGLAGES ----------
 async function chargerReglages() {
   const zone = document.getElementById('contenuPage');
-  const reglages = await api('/admin/reglages');
+  const [reglages, smsRecus] = await Promise.all([api('/admin/reglages'), api('/admin/sms-recus')]);
+  const urlPasserelle = `${window.location.origin}/api/sms/entrant?cle=${reglages.sms_gateway_secret}`;
   zone.innerHTML = `
+    <h3>Passerelle SMS (vérification automatique des paiements)</h3>
+    <div class="carte" style="box-shadow:none;border:1px solid var(--border);padding:14px;">
+      <p style="margin:0 0 10px;font-size:13.5px;">
+        Sur ton téléphone Android qui reçoit les SMS MVola, installe l'application <b>SMS Forwarder</b> (Play Store),
+        crée une règle "transférer vers URL Webhook" sans filtre de mot-clé, et colle cette adresse comme destination
+        (le corps du SMS doit être envoyé dans un champ nommé <code>message</code> ou <code>texte</code>) :
+      </p>
+      <input type="text" readonly value="${urlPasserelle}" onclick="this.select()" style="font-family:var(--font-mono);font-size:11px;">
+      <button class="secondaire" onclick="regenererCleSms()">Régénérer la clé (si compromise)</button>
+      <p class="date" style="margin-top:10px;">Derniers SMS reçus par la passerelle (${smsRecus.length}) :</p>
+      ${smsRecus.length === 0 ? '<p class="date">Aucun SMS reçu pour le moment.</p>' : `
+      <table>
+        <tr><th>Type</th><th>Montant</th><th>Référence</th><th>Utilisé</th><th>Reçu le</th></tr>
+        ${smsRecus.map((s) => `
+          <tr>
+            <td>${s.type === 'RECU' ? 'Reçu' : 'Envoyé'}</td>
+            <td>${s.montant} Ar</td>
+            <td>${echapper(s.reference)}</td>
+            <td>${s.consomme ? 'Oui' : 'Non'}</td>
+            <td>${formaterDate(s.created_at)}</td>
+          </tr>`).join('')}
+      </table>`}
+    </div>
+
     <h3>Inscription des étudiants</h3>
     <label>Code d'inscription (à communiquer aux 142 étudiants)</label>
     <input type="text" id="r_code_inscription" value="${reglages.code_inscription || ''}">
@@ -458,6 +483,14 @@ function majApercuCout() {
     + (v('r_jetons_par_jaime') > 0 && pJaime === 1 && v('r_jetons_par_jaime') < jetonsParPoint / 2
       ? ' — Attention : certaines valeurs sont très basses par rapport à "jetons par point", tout arrondit au minimum de 1 point.'
       : '');
+}
+
+async function regenererCleSms() {
+  if (!confirm('Régénérer la clé va invalider l\'ancienne URL — pense à la remettre à jour dans SMS Forwarder. Continuer ?')) return;
+  try {
+    await api('/admin/reglages/regenerer-cle-sms', 'POST');
+    chargerReglages();
+  } catch (e) { alert(e.message); }
 }
 
 async function enregistrerReglages() {

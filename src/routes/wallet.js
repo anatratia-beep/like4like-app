@@ -28,6 +28,18 @@ router.get('/infos-paiement', authRequired, (req, res) => {
  * Le jour ou un compte marchand MVola est obtenu, voir src/services/mvola.js pour
  * une verification automatique et fiable des paiements.
  */
+/**
+ * Achat de jetons - flux DECLARATIF avec verification automatique par passerelle SMS.
+ *
+ * Si le vrai SMS de confirmation MVola correspondant a cette reference est deja
+ * arrive (recu par la passerelle SMS avant que l'etudiant ne soumette ce formulaire),
+ * les jetons sont credites IMMEDIATEMENT et automatiquement, sur la base du montant
+ * REELLEMENT verifie dans le SMS (pas celui declare par l'etudiant).
+ *
+ * Sinon, la demande reste EN_ATTENTE : elle sera validee automatiquement des que
+ * le SMS correspondant arrivera (voir routes/sms.js), ou manuellement par l'admin
+ * en secours (Admin -> Achats) si la passerelle SMS n'est pas configuree/disponible.
+ */
 router.post('/achat-jetons', authRequired, (req, res) => {
   const { montant_ariary, reference } = req.body;
   const montant = Number(montant_ariary);
@@ -46,6 +58,29 @@ router.post('/achat-jetons', authRequired, (req, res) => {
   }
 
   const ariaryParJeton = getSetting('ariary_par_jeton');
+
+  // Le vrai SMS MVola est-il deja arrive pour cette reference ?
+  const smsVerifie = db.prepare("SELECT * FROM sms_recus WHERE type = 'RECU' AND reference = ? AND consomme = 0").get(ref);
+
+  if (smsVerifie) {
+    const jetonsAcredit = Math.floor(smsVerifie.montant / ariaryParJeton);
+    const maj = db.transaction(() => {
+      db.prepare('UPDATE users SET jetons = jetons + ? WHERE id = ?').run(jetonsAcredit, req.user.id);
+      db.prepare(
+        `INSERT INTO transactions (user_id, type, montant_ariary, montant_jetons, description, reference_externe, statut)
+         VALUES (?, 'ACHAT_JETONS', ?, ?, ?, ?, 'VALIDE')`
+      ).run(req.user.id, smsVerifie.montant, jetonsAcredit, `Achat de jetons verifie automatiquement par SMS (ref. ${ref})`, ref);
+      db.prepare('UPDATE sms_recus SET consomme = 1 WHERE id = ?').run(smsVerifie.id);
+    });
+    maj();
+
+    return res.json({
+      ok: true,
+      jetons_credites: jetonsAcredit,
+      message: `${jetonsAcredit} jetons crédités immédiatement — paiement vérifié automatiquement.`,
+    });
+  }
+
   const jetonsPrevus = Math.floor(montant / ariaryParJeton);
 
   db.prepare(
@@ -55,7 +90,7 @@ router.post('/achat-jetons', authRequired, (req, res) => {
 
   res.json({
     ok: true,
-    message: `Demande enregistree (${jetonsPrevus} jetons prevus). Elle sera validee par l'administrateur apres verification de la reception du paiement.`,
+    message: `Demande enregistree (${jetonsPrevus} jetons prevus). Elle sera validee automatiquement des reception du SMS de confirmation, ou par l'administrateur en secours.`,
   });
 });
 

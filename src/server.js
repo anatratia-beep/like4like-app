@@ -14,6 +14,7 @@ const interactionRoutes = require('./routes/interactions');
 const messageRoutes = require('./routes/messages');
 const adminRoutes = require('./routes/admin');
 const pushRoutes = require('./routes/push');
+const { router: smsRoutes } = require('./routes/sms');
 
 const app = express();
 app.use(cors());
@@ -29,6 +30,7 @@ app.use('/api', interactionRoutes); // expose /api/publications/:id/interactions
 app.use('/api/messages', messageRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/sms', smsRoutes);
 
 app.get('/api/sante', (req, res) => res.json({ ok: true, heure: new Date().toISOString() }));
 

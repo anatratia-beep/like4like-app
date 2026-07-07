@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { db, getAllSettings, getTextSetting } = require('../db');
 const config = require('../config');
 const { authRequired, adminRequired } = require('../middleware/auth');
@@ -112,7 +113,16 @@ router.get('/reglages', (req, res) => {
     ...getAllSettings(),
     code_inscription: getTextSetting('code_inscription'),
     numero_reception_paiement: getTextSetting('numero_reception_paiement'),
+    sms_gateway_secret: getTextSetting('sms_gateway_secret'),
   });
+});
+
+router.post('/reglages/regenerer-cle-sms', (req, res) => {
+  const nouvelleCle = crypto.randomBytes(16).toString('hex');
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?').run(
+    'sms_gateway_secret', nouvelleCle, nouvelleCle
+  );
+  res.json({ ok: true, sms_gateway_secret: nouvelleCle });
 });
 
 router.put('/reglages', (req, res) => {
@@ -257,6 +267,12 @@ router.post('/achats/:id/rejeter', (req, res) => {
   });
 
   res.json({ ok: true });
+});
+
+// ---- Journal des SMS recus par la passerelle (debogage/verification) ----
+router.get('/sms-recus', (req, res) => {
+  const rows = db.prepare('SELECT * FROM sms_recus ORDER BY created_at DESC LIMIT 50').all();
+  res.json(rows);
 });
 
 // ---- Vue d'ensemble des publications, classees par session/classe ----
