@@ -263,12 +263,12 @@ router.post('/achats/:id/rejeter', (req, res) => {
 router.get('/publications', (req, res) => {
   const rows = db
     .prepare(
-      `SELECT p.*, u.nom AS auteur_nom, u.classe AS auteur_classe, u.telephone AS auteur_telephone,
+      `SELECT p.*, u.nom AS auteur_nom, u.classe AS auteur_classe, u.role AS auteur_role, u.telephone AS auteur_telephone,
               (SELECT COUNT(*) FROM interactions i WHERE i.publication_id = p.id) AS nb_interactions,
               (SELECT COUNT(*) FROM interactions i WHERE i.publication_id = p.id AND i.statut = 'VALIDEE') AS nb_validees
        FROM publications p
        JOIN users u ON u.id = p.user_id
-       ORDER BY u.classe, u.nom, p.created_at DESC`
+       ORDER BY (CASE WHEN u.role = 'admin' THEN 0 ELSE 1 END), u.classe, u.nom, p.created_at DESC`
     )
     .all();
   res.json(rows);

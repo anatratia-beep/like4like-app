@@ -54,23 +54,34 @@ async function chargerPublicationsAdmin() {
   zone.innerHTML = 'Chargement...';
   const publications = await api('/admin/publications');
 
+  const formulaire = `
+    <h3>Publier (gratuit, épinglé en tête du fil)</h3>
+    <div class="carte" style="box-shadow:none;border:1px solid var(--border);padding:14px;margin-bottom:8px;">
+      <textarea id="contenuPubAdmin" placeholder="Texte de la publication" rows="3"></textarea>
+      <input type="url" id="lienPubAdmin" placeholder="Lien vers la publication (Facebook, Instagram, TikTok...)">
+      <button onclick="publierAdmin()">Publier</button>
+      <div id="messagePubAdmin"></div>
+    </div>
+  `;
+
   if (publications.length === 0) {
-    zone.innerHTML = '<p>Aucune publication pour le moment.</p>';
+    zone.innerHTML = formulaire + '<p>Aucune publication pour le moment.</p>';
     return;
   }
 
   const parClasse = {};
   for (const p of publications) {
-    const cle = p.auteur_classe || 'SANS_CLASSE';
+    const cle = p.auteur_role === 'admin' ? 'ADMIN' : (p.auteur_classe || 'SANS_CLASSE');
     if (!parClasse[cle]) parClasse[cle] = [];
     parClasse[cle].push(p);
   }
 
-  const ordre = ['S1_MATIN', 'S2_MATIN', 'S1_APREM', 'S2_APREM', 'SANS_CLASSE'];
-  zone.innerHTML = ordre
+  const ordre = ['ADMIN', 'S1_MATIN', 'S2_MATIN', 'S1_APREM', 'S2_APREM', 'SANS_CLASSE'];
+  const nomsGroupes = { ADMIN: 'Administration (épinglé)', ...NOMS_CLASSES, SANS_CLASSE: 'Sans classe' };
+  zone.innerHTML = formulaire + ordre
     .filter((cle) => parClasse[cle] && parClasse[cle].length > 0)
     .map((cle) => `
-      <h3>${NOMS_CLASSES[cle] || 'Sans classe'} (${parClasse[cle].length} publication${parClasse[cle].length > 1 ? 's' : ''})</h3>
+      <h3>${nomsGroupes[cle]} (${parClasse[cle].length} publication${parClasse[cle].length > 1 ? 's' : ''})</h3>
       ${parClasse[cle].map((p) => `
         <div class="publication">
           <div class="auteur">
@@ -86,11 +97,23 @@ async function chargerPublicationsAdmin() {
             Commentaires ${p.quota_commentaire - p.commentaire_restants}/${p.quota_commentaire} ·
             Partages ${p.quota_partage - p.partage_restants}/${p.quota_partage}
             &nbsp;•&nbsp; ${p.nb_validees}/${p.nb_interactions} interaction(s) validee(s)
-            &nbsp;•&nbsp; cout : ${p.cout_total} jetons
+            &nbsp;•&nbsp; cout : ${p.cout_total === 0 ? 'gratuit' : p.cout_total + ' jetons'}
           </div>
         </div>
       `).join('')}
     `).join('');
+}
+
+async function publierAdmin() {
+  const contenu = document.getElementById('contenuPubAdmin').value.trim();
+  const lien_url = document.getElementById('lienPubAdmin').value.trim();
+  const msg = document.getElementById('messagePubAdmin');
+  if (!lien_url) { msg.innerHTML = '<div class="erreur">Le lien de la publication est requis</div>'; return; }
+  try {
+    await api('/publications', 'POST', { contenu, lien_url });
+    msg.innerHTML = '<div class="succes">Publication créée et épinglée.</div>';
+    chargerPublicationsAdmin();
+  } catch (e) { msg.innerHTML = `<div class="erreur">${e.message}</div>`; }
 }
 
 // ---------- MESSAGES ----------

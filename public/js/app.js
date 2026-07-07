@@ -43,11 +43,11 @@ async function chargerFil() {
   const publications = await api('/publications');
   if (publications.length === 0) { zone.innerHTML = '<p>Aucune publication pour le moment.</p>'; return; }
   zone.innerHTML = publications.map((p) => `
-    <div class="publication">
+    <div class="publication" ${p.auteur_role === 'admin' ? 'style="border-color:var(--accent);"' : ''}>
       <div class="auteur">
         <img src="${p.auteur_photo || ''}" onerror="this.style.visibility='hidden'">
         <div>
-          <div class="nom">${echapper(p.auteur_nom)}</div>
+          <div class="nom">${echapper(p.auteur_nom)} ${p.auteur_role === 'admin' ? '<span class="badge" style="background:var(--accent-bg);color:var(--accent-strong);">Épinglé</span>' : `<span class="badge">${nomClasse(p.auteur_classe)}</span>`}</div>
           <div class="date">${formaterDate(p.created_at)}</div>
         </div>
       </div>
