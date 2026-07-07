@@ -52,7 +52,27 @@ function nomClasse(code) { return NOMS_CLASSES[code] || code || '—'; }
 async function chargerPublicationsAdmin() {
   const zone = document.getElementById('contenuPage');
   zone.innerHTML = 'Chargement...';
-  const publications = await api('/admin/publications');
+  const [publications, aValider] = await Promise.all([
+    api('/admin/publications'),
+    api('/interactions/a-valider'),
+  ]);
+
+  const sectionAValider = `
+    <h3>Interactions à valider sur vos publications (${aValider.length})</h3>
+    ${aValider.length === 0 ? '<p class="date">Aucune interaction en attente sur vos publications.</p>' : aValider.map((i) => `
+      <div class="interaction-item" style="flex-direction:column;align-items:flex-start;">
+        <div><b>${echapper(i.interacteur_nom)}</b> a fait : <span class="badge">${i.type}</span></div>
+        <div class="date">Sur : "${echapper((i.publication_contenu || '').slice(0, 60))}" · ${formaterDate(i.created_at)}</div>
+        <div>${i.preuve_type === 'IMAGE'
+          ? `<img src="${i.preuve_url}" style="max-width:100%;border-radius:8px;margin-top:6px;">`
+          : `<a href="${i.preuve_url}" target="_blank">Voir la preuve (lien)</a>`}</div>
+        <div class="actions-pub" style="width:100%;">
+          <button onclick="validerInteractionAdmin(${i.id})">${ICONES.valider} Valider</button>
+          <button class="danger" onclick="rejeterInteractionAdmin(${i.id})">${ICONES.croix} Rejeter</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
 
   const formulaire = `
     <h3>Publier (gratuit, épinglé en tête du fil)</h3>
@@ -65,7 +85,7 @@ async function chargerPublicationsAdmin() {
   `;
 
   if (publications.length === 0) {
-    zone.innerHTML = formulaire + '<p>Aucune publication pour le moment.</p>';
+    zone.innerHTML = sectionAValider + formulaire + '<p>Aucune publication pour le moment.</p>';
     return;
   }
 
@@ -78,7 +98,7 @@ async function chargerPublicationsAdmin() {
 
   const ordre = ['ADMIN', 'S1_MATIN', 'S2_MATIN', 'S1_APREM', 'S2_APREM', 'SANS_CLASSE'];
   const nomsGroupes = { ADMIN: 'Administration (épinglé)', ...NOMS_CLASSES, SANS_CLASSE: 'Sans classe' };
-  zone.innerHTML = formulaire + ordre
+  zone.innerHTML = sectionAValider + formulaire + ordre
     .filter((cle) => parClasse[cle] && parClasse[cle].length > 0)
     .map((cle) => `
       <h3>${nomsGroupes[cle]} (${parClasse[cle].length} publication${parClasse[cle].length > 1 ? 's' : ''})</h3>
@@ -102,6 +122,15 @@ async function chargerPublicationsAdmin() {
         </div>
       `).join('')}
     `).join('');
+}
+
+async function validerInteractionAdmin(id) {
+  try { await api(`/interactions/${id}/valider`, 'POST'); chargerPublicationsAdmin(); }
+  catch (e) { alert(e.message); }
+}
+async function rejeterInteractionAdmin(id) {
+  try { await api(`/interactions/${id}/rejeter`, 'POST'); chargerPublicationsAdmin(); }
+  catch (e) { alert(e.message); }
 }
 
 async function publierAdmin() {
