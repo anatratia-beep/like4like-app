@@ -29,8 +29,19 @@ function analyserSms(texteBrut) {
     };
   }
 
-  // Argent TRANSFERE (sortant, envoye par l'admin)
+  // Argent TRANSFERE (sortant, envoye par l'admin) - format A : "Vous avez transfere X Ar a NOM(telephone)..."
   m = texte.match(/Vous avez transfere\s+([\d][\d\s]*)\s*Ar\s+a\s+.*?\((\d{9,10})\)[\s\S]*?Ref\.?:?\s*(\d+)/i);
+  if (m) {
+    return {
+      type: 'TRANSFERE',
+      montant: parseInt(m[1].replace(/\s/g, ''), 10),
+      telephone: m[2],
+      reference: m[3],
+    };
+  }
+
+  // Argent TRANSFERE (sortant) - format B : "X Ar envoye a NOM telephone le ..."
+  m = texte.match(/([\d][\d\s]*)\s*Ar\s+envoye\s+a\s+.*?(\d{9,10})\s+le[\s\S]*?Ref\.?:?\s*(\d+)/i);
   if (m) {
     return {
       type: 'TRANSFERE',
