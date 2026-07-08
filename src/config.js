@@ -1,9 +1,17 @@
 require('dotenv').config();
 
+const path = require('path');
+
 module.exports = {
   port: process.env.PORT || 3000,
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-a-changer',
   baseUrl: process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`,
+
+  // Dossier ou sont stockes la base de donnees et les fichiers uploades.
+  // En local, ca reste le dossier du projet (comportement inchange).
+  // En production sur Render avec un disque persistant, definir DATA_DIR
+  // (ex: /data) pour que rien ne soit efface entre deux deploiements.
+  dataDir: process.env.DATA_DIR || path.join(__dirname, '..'),
 
   admin: {
     telephone: process.env.ADMIN_TELEPHONE || '0340000000',
