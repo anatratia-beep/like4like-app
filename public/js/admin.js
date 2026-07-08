@@ -393,7 +393,9 @@ async function rejeterRetrait(id) { await api(`/admin/retraits/${id}/rejeter`, '
 // ---------- REGLAGES ----------
 async function chargerReglages() {
   const zone = document.getElementById('contenuPage');
-  const [reglages, smsRecus] = await Promise.all([api('/admin/reglages'), api('/admin/sms-recus')]);
+  const [reglages, smsRecus, smsLog] = await Promise.all([
+    api('/admin/reglages'), api('/admin/sms-recus'), api('/admin/sms-log'),
+  ]);
   const urlPasserelle = `${window.location.origin}/api/sms/entrant?cle=${reglages.sms_gateway_secret}`;
   zone.innerHTML = `
     <h3>Passerelle SMS (vérification automatique des paiements)</h3>
@@ -405,8 +407,9 @@ async function chargerReglages() {
       </p>
       <input type="text" readonly value="${urlPasserelle}" onclick="this.select()" style="font-family:var(--font-mono);font-size:11px;">
       <button class="secondaire" onclick="regenererCleSms()">Régénérer la clé (si compromise)</button>
-      <p class="date" style="margin-top:10px;">Derniers SMS reçus par la passerelle (${smsRecus.length}) :</p>
-      ${smsRecus.length === 0 ? '<p class="date">Aucun SMS reçu pour le moment.</p>' : `
+
+      <p class="date" style="margin-top:10px;">Derniers SMS reconnus et traités (${smsRecus.length}) :</p>
+      ${smsRecus.length === 0 ? '<p class="date">Aucun SMS reconnu pour le moment.</p>' : `
       <table>
         <tr><th>Type</th><th>Montant</th><th>Référence</th><th>Utilisé</th><th>Reçu le</th></tr>
         ${smsRecus.map((s) => `
@@ -418,6 +421,19 @@ async function chargerReglages() {
             <td>${formaterDate(s.created_at)}</td>
           </tr>`).join('')}
       </table>`}
+
+      <p class="date" style="margin-top:14px;">Journal brut de débogage — toutes les tentatives reçues par la passerelle, même non reconnues (${smsLog.length}) :</p>
+      ${smsLog.length === 0 ? '<p class="date">Rien n\'est encore arrivé à la passerelle. Vérifie que la règle est bien activée dans l\'app de transfert de SMS sur le téléphone.</p>' : `
+      <div style="max-height:260px;overflow-y:auto;">
+        ${smsLog.map((s) => `
+          <div class="transaction-item" style="flex-direction:column;align-items:flex-start;">
+            <div><span class="badge ${s.cle_valide ? 'VALIDE' : 'ECHEC'}">${s.cle_valide ? 'clé valide' : 'clé invalide'}</span>
+            ${s.type_detecte ? `<span class="badge VALIDE">${s.type_detecte}</span>` : '<span class="badge EN_ATTENTE">non reconnu</span>'}
+            <span class="date">${formaterDate(s.created_at)}</span></div>
+            <div style="font-family:var(--font-mono);font-size:11px;word-break:break-all;margin-top:4px;">${echapper(s.texte_brut || '(vide)')}</div>
+          </div>
+        `).join('')}
+      </div>`}
     </div>
 
     <h3>Inscription des étudiants</h3>

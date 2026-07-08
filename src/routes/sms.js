@@ -51,23 +51,56 @@ function tenterConfirmationRetrait(sms) {
   });
 }
 
+// Extrait le texte du SMS quel que soit le format envoye par l'application de
+// transfert (JSON avec differents noms de champs, texte brut, ou parametres URL).
+function extraireTexte(req) {
+  const depuisQuery = req.query.texte || req.query.message || req.query.text || req.query.body;
+  if (depuisQuery) return String(depuisQuery);
+
+  const corps = req.body;
+  if (!corps) return '';
+
+  if (typeof corps === 'object') {
+    return corps.texte || corps.message || corps.text || corps.body || corps.sms || '';
+  }
+
+  if (typeof corps === 'string') {
+    const nettoye = corps.trim();
+    if (nettoye.startsWith('{')) {
+      try {
+        const j = JSON.parse(nettoye);
+        return j.texte || j.message || j.text || j.body || j.sms || '';
+      } catch (e) {
+        // Pas du JSON valide malgre les accolades : on utilise le texte brut tel quel.
+      }
+    }
+    return nettoye;
+  }
+
+  return '';
+}
+
 function traiterSmsEntrant(req, res) {
   const cle = req.query.cle || req.headers['x-gateway-secret'];
   const cleAttendue = getTextSetting('sms_gateway_secret');
-  if (!cleAttendue || cle !== cleAttendue) {
-    return res.status(403).json({ erreur: 'Cle de passerelle invalide' });
+  const cleValide = !!cleAttendue && cle === cleAttendue;
+
+  const texte = extraireTexte(req);
+  const analyse = cleValide && texte ? analyserSms(texte) : null;
+
+  // On journalise TOUT ce qui arrive (meme non reconnu) pour pouvoir deboguer
+  // depuis Admin -> Reglages sans avoir besoin d'acceder aux logs du serveur.
+  try {
+    db.prepare(
+      'INSERT INTO sms_log (cle_valide, texte_brut, type_detecte) VALUES (?, ?, ?)'
+    ).run(cleValide ? 1 : 0, texte || (typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {})), analyse?.type || null);
+  } catch (e) {
+    console.error('[sms] erreur journalisation', e);
   }
 
-  const texte =
-    (req.body && (req.body.texte || req.body.message || req.body.text || req.body.body)) ||
-    req.query.texte || req.query.message || req.query.text || '';
-
+  if (!cleValide) return res.status(403).json({ erreur: 'Cle de passerelle invalide' });
   if (!texte) return res.status(400).json({ erreur: 'Aucun texte de SMS fourni' });
-
-  const analyse = analyserSms(texte);
-  if (!analyse) {
-    return res.json({ ok: true, ignore: true, raison: 'Format de SMS non reconnu' });
-  }
+  if (!analyse) return res.json({ ok: true, ignore: true, raison: 'Format de SMS non reconnu' });
 
   try {
     db.prepare(
@@ -84,9 +117,9 @@ function traiterSmsEntrant(req, res) {
   res.json({ ok: true });
 }
 
-// Beaucoup d'applications de transfert de SMS n'envoient qu'en GET ou qu'en POST :
-// on accepte les deux pour rester compatible avec le plus d'applications possible.
-router.post('/entrant', express.json(), traiterSmsEntrant);
+// Accepte le corps quel que soit son Content-Type (certaines apps de transfert
+// n'envoient pas "application/json" meme quand le corps est du JSON).
+router.post('/entrant', express.text({ type: () => true, limit: '100kb' }), traiterSmsEntrant);
 router.get('/entrant', traiterSmsEntrant);
 
 module.exports = { router, tenterValidationAchat, tenterConfirmationRetrait };

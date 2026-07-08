@@ -98,6 +98,14 @@ CREATE TABLE IF NOT EXISTS retraits (
   traite_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS sms_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  cle_valide INTEGER NOT NULL,
+  texte_brut TEXT,
+  type_detecte TEXT,   -- RECU | TRANSFERE | NULL si non reconnu
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS sms_recus (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   type TEXT NOT NULL,          -- RECU (argent recu) | TRANSFERE (argent envoye)

@@ -275,6 +275,13 @@ router.get('/sms-recus', (req, res) => {
   res.json(rows);
 });
 
+// Journal BRUT de toutes les tentatives (meme non reconnues) : utile pour deboguer
+// le format exact envoye par l'application de transfert de SMS.
+router.get('/sms-log', (req, res) => {
+  const rows = db.prepare('SELECT * FROM sms_log ORDER BY created_at DESC LIMIT 30').all();
+  res.json(rows);
+});
+
 // ---- Vue d'ensemble des publications, classees par session/classe ----
 router.get('/publications', (req, res) => {
   const rows = db
