@@ -10,9 +10,16 @@ router.get('/solde', authRequired, (req, res) => {
   res.json(u);
 });
 
-// Numero vers lequel les etudiants doivent envoyer l'argent avant d'acheter des jetons
+// Numero vers lequel les etudiants doivent envoyer l'argent avant d'acheter des jetons,
+// et forfaits rapides proposes (montants en Ariary).
 router.get('/infos-paiement', authRequired, (req, res) => {
-  res.json({ numero_reception_paiement: getTextSetting('numero_reception_paiement') });
+  const forfaitsTexte = getTextSetting('forfaits_ariary') || '';
+  const forfaits = forfaitsTexte.split(',').map((s) => Number(s.trim())).filter((n) => n > 0);
+  res.json({
+    numero_reception_paiement: getTextSetting('numero_reception_paiement'),
+    ariary_par_jeton: getSetting('ariary_par_jeton'),
+    forfaits,
+  });
 });
 
 /**

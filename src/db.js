@@ -141,6 +141,7 @@ for (const [key, value] of Object.entries(config.reglesParDefaut)) {
 }
 insertSetting.run('code_inscription', config.codeInscriptionParDefaut, 'code_inscription');
 insertSetting.run('numero_reception_paiement', config.numeroReceptionParDefaut, 'numero_reception_paiement');
+insertSetting.run('forfaits_ariary', config.forfaitsParDefaut, 'forfaits_ariary');
 insertSetting.run('sms_gateway_secret', crypto.randomBytes(16).toString('hex'), 'sms_gateway_secret');
 
 // Migration idempotente : ajoute la colonne si la base existait deja sans elle
@@ -173,7 +174,7 @@ function getTextSetting(key) {
 }
 
 function getAllSettings() {
-  const rows = db.prepare("SELECT key, value FROM settings WHERE key NOT IN ('code_inscription', 'numero_reception_paiement', 'sms_gateway_secret')").all();
+  const rows = db.prepare("SELECT key, value FROM settings WHERE key NOT IN ('code_inscription', 'numero_reception_paiement', 'sms_gateway_secret', 'forfaits_ariary')").all();
   const obj = {};
   for (const r of rows) obj[r.key] = Number(r.value);
   return obj;

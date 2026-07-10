@@ -50,6 +50,9 @@ module.exports = {
   // Numero (Mobile Money) vers lequel les etudiants envoient l'argent pour acheter des jetons
   numeroReceptionParDefaut: process.env.NUMERO_RECEPTION_PAIEMENT || '0340000000',
 
+  // Forfaits d'achat rapides proposes aux etudiants (montants en Ariary, separes par des virgules)
+  forfaitsParDefaut: process.env.FORFAITS_ARIARY || '500,1000,2000,5000,10000',
+
   mvola: {
     env: process.env.MVOLA_ENV || 'sandbox',
     consumerKey: process.env.MVOLA_CONSUMER_KEY || '',

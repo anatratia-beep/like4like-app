@@ -114,6 +114,7 @@ router.get('/reglages', (req, res) => {
     code_inscription: getTextSetting('code_inscription'),
     numero_reception_paiement: getTextSetting('numero_reception_paiement'),
     sms_gateway_secret: getTextSetting('sms_gateway_secret'),
+    forfaits_ariary: getTextSetting('forfaits_ariary'),
   });
 });
 
@@ -126,7 +127,7 @@ router.post('/reglages/regenerer-cle-sms', (req, res) => {
 });
 
 router.put('/reglages', (req, res) => {
-  const { code_inscription, numero_reception_paiement, ...reglagesNumeriques } = req.body;
+  const { code_inscription, numero_reception_paiement, forfaits_ariary, ...reglagesNumeriques } = req.body;
   const maj = db.transaction((entrees) => {
     for (const [key, value] of entrees) {
       db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?').run(
@@ -143,6 +144,11 @@ router.put('/reglages', (req, res) => {
         'numero_reception_paiement', numero_reception_paiement.trim(), numero_reception_paiement.trim()
       );
     }
+    if (forfaits_ariary && forfaits_ariary.trim()) {
+      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?').run(
+        'forfaits_ariary', forfaits_ariary.trim(), forfaits_ariary.trim()
+      );
+    }
   });
   maj(Object.entries(reglagesNumeriques));
   res.json({
@@ -151,6 +157,7 @@ router.put('/reglages', (req, res) => {
       ...getAllSettings(),
       code_inscription: getTextSetting('code_inscription'),
       numero_reception_paiement: getTextSetting('numero_reception_paiement'),
+      forfaits_ariary: getTextSetting('forfaits_ariary'),
     },
   });
 });

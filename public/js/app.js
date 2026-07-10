@@ -53,7 +53,11 @@ async function chargerFil() {
       </div>
       <div>${echapper(p.contenu)}</div>
       ${p.lien_url ? `<div><a href="${p.lien_url}" target="_blank">${echapper(p.lien_url)}</a></div>` : ''}
-      <div class="date">J'aime ${p.jaime_restants}/${p.quota_jaime} · Commentaires ${p.commentaire_restants}/${p.quota_commentaire} · Partages ${p.partage_restants}/${p.quota_partage}</div>
+      <div class="date">${[
+        p.quota_jaime > 0 ? `J'aime ${p.jaime_restants}/${p.quota_jaime}` : '',
+        p.quota_commentaire > 0 ? `Commentaires ${p.commentaire_restants}/${p.quota_commentaire}` : '',
+        p.quota_partage > 0 ? `Partages ${p.partage_restants}/${p.quota_partage}` : '',
+      ].filter(Boolean).join(' · ')}</div>
       ${p.user_id !== moi.id ? `
       <div class="actions-pub">
         <button onclick="ouvrirPreuve(${p.id}, 'LIKE')" ${p.jaime_restants <= 0 ? 'disabled' : ''}>${ICONES.coeur} J'aime</button>
@@ -104,38 +108,66 @@ async function envoyerInteraction() {
 }
 
 // ---------- PUBLIER ----------
+// ---------- PUBLIER (style "Booster une publication") ----------
+let objectifChoisi = null;
+let tarifsObjectifs = null;
+
 async function chargerPublier() {
   const zone = document.getElementById('contenuPage');
   const t = await api('/publications/tarif-actuel');
   const s = await api('/wallet/solde');
+  tarifsObjectifs = t;
+  objectifChoisi = null;
+
   zone.innerHTML = `
-    <div class="carte" style="box-shadow:none;border:1px solid #e5eae6;padding:12px;">
-      <b>Cout de cette publication : ${t.cout_total} jetons</b>
-      <table style="margin-top:8px;">
-        <tr><th>Type</th><th>Quota</th><th>Cout/action</th></tr>
-        <tr><td>J'aime</td><td>${t.quota_jaime}</td><td>${t.jetons_par_jaime} jetons</td></tr>
-        <tr><td>Commentaire</td><td>${t.quota_commentaire}</td><td>${t.jetons_par_commentaire} jetons</td></tr>
-        <tr><td>Partage</td><td>${t.quota_partage}</td><td>${t.jetons_par_partage} jetons</td></tr>
-      </table>
-      <p class="date">Vous avez actuellement <b>${s.jetons} jetons</b>.</p>
+    <p class="date">Vous avez <b>${s.jetons} jetons</b>. Choisissez ce que vous voulez booster :</p>
+    <div class="actions-pub" style="margin-bottom:10px;">
+      <button class="secondaire" id="objJAIME" onclick="choisirObjectif('LIKE')">${ICONES.coeur} J'aime<br><span style="font-size:10px;opacity:0.7;">${t.jetons_par_jaime} jetons/action</span></button>
+      <button class="secondaire" id="objCOMMENTAIRE" onclick="choisirObjectif('COMMENTAIRE')">${ICONES.commentaire} Commentaire<br><span style="font-size:10px;opacity:0.7;">${t.jetons_par_commentaire} jetons/action</span></button>
+      <button class="secondaire" id="objPARTAGE" onclick="choisirObjectif('PARTAGE')">${ICONES.partage} Partage<br><span style="font-size:10px;opacity:0.7;">${t.jetons_par_partage} jetons/action</span></button>
     </div>
+    <div id="detailsObjectif"></div>
+  `;
+}
+
+function choisirObjectif(objectif) {
+  objectifChoisi = objectif;
+  ['LIKE', 'COMMENTAIRE', 'PARTAGE'].forEach((o) => {
+    const id = { LIKE: 'objJAIME', COMMENTAIRE: 'objCOMMENTAIRE', PARTAGE: 'objPARTAGE' }[o];
+    document.getElementById(id).classList.toggle('accent', o === objectif);
+  });
+
+  const noms = { LIKE: "j'aime", COMMENTAIRE: 'commentaires', PARTAGE: 'partages' };
+  const cout = { LIKE: tarifsObjectifs.jetons_par_jaime, COMMENTAIRE: tarifsObjectifs.jetons_par_commentaire, PARTAGE: tarifsObjectifs.jetons_par_partage }[objectif];
+
+  document.getElementById('detailsObjectif').innerHTML = `
+    <label>Combien de ${noms[objectif]} voulez-vous obtenir ?</label>
+    <input type="number" id="quantiteObjectif" min="1" value="10" oninput="majCoutObjectif()">
+    <p id="coutObjectifAffiche" style="font-weight:600;"></p>
     <textarea id="contenuPub" placeholder="Texte de votre publication" rows="3"></textarea>
     <input type="url" id="lienPub" placeholder="Lien vers la publication (Facebook, Instagram, TikTok...)" required>
-    <button onclick="publier()">Publier (-${t.cout_total} jetons)</button>
+    <button onclick="publier()">Publier</button>
     <div id="messagePub"></div>
   `;
+  majCoutObjectif();
+}
+
+function majCoutObjectif() {
+  const qte = Number(document.getElementById('quantiteObjectif').value) || 0;
+  const cout = { LIKE: tarifsObjectifs.jetons_par_jaime, COMMENTAIRE: tarifsObjectifs.jetons_par_commentaire, PARTAGE: tarifsObjectifs.jetons_par_partage }[objectifChoisi];
+  document.getElementById('coutObjectifAffiche').textContent = `Coût total : ${qte * cout} jetons`;
 }
 
 async function publier() {
   const contenu = document.getElementById('contenuPub').value.trim();
   const lien_url = document.getElementById('lienPub').value.trim();
+  const quantite = Number(document.getElementById('quantiteObjectif').value);
   const msg = document.getElementById('messagePub');
+  if (!objectifChoisi) { msg.innerHTML = '<div class="erreur">Choisissez un objectif</div>'; return; }
   if (!lien_url) { msg.innerHTML = '<div class="erreur">Le lien de la publication est requis</div>'; return; }
   try {
-    const r = await api('/publications', 'POST', { contenu, lien_url });
-    msg.innerHTML = `<div class="succes">Publication creee ! (-${r.cout_total} jetons)</div>`;
-    document.getElementById('contenuPub').value = '';
-    document.getElementById('lienPub').value = '';
+    const r = await api('/publications', 'POST', { contenu, lien_url, objectif: objectifChoisi, quantite });
+    msg.innerHTML = `<div class="succes">Publication créée ! (-${r.cout_total} jetons)</div>`;
     majSoldes();
     chargerPublier();
   } catch (e) {
@@ -189,6 +221,15 @@ async function chargerPortefeuille() {
       </p>
       <p style="margin:0;font-size:13.5px;color:var(--text-muted);">2. Colle ci-dessous la référence reçue par SMS. Tes jetons sont crédités immédiatement.</p>
     </div>
+    ${infosPaiement.forfaits && infosPaiement.forfaits.length > 0 ? `
+    <label>Forfaits rapides</label>
+    <div class="actions-pub" style="flex-wrap:wrap;">
+      ${infosPaiement.forfaits.map((montant) => `
+        <button class="secondaire" style="flex:1 1 30%;font-size:12px;" onclick="choisirForfait(${montant})">
+          ${montant} Ar<br><span style="font-size:10px;opacity:0.7;">${Math.floor(montant / infosPaiement.ariary_par_jeton)} jetons</span>
+        </button>
+      `).join('')}
+    </div>` : ''}
     <input type="number" id="montantAchat" placeholder="Montant envoyé en Ariary" min="100">
     <input type="text" id="referenceAchat" placeholder="Référence reçue par SMS">
     <button onclick="acheterJetons()">Valider mon paiement</button>
@@ -219,6 +260,11 @@ async function chargerPortefeuille() {
         <span class="badge ${t.statut}">${t.statut}</span>
       </div>`).join('')}
   `;
+}
+
+function choisirForfait(montant) {
+  document.getElementById('montantAchat').value = montant;
+  document.getElementById('referenceAchat').focus();
 }
 
 async function acheterJetons() {

@@ -443,6 +443,10 @@ async function chargerReglages() {
     <label>Numéro Mobile Money de réception des paiements</label>
     <input type="text" id="r_numero_reception" value="${reglages.numero_reception_paiement || ''}">
     <p class="date">Les étudiants voient ce numéro dans leur portefeuille pour envoyer l'argent avant de coller la référence.</p>
+
+    <label>Forfaits rapides proposés (montants en Ariary, séparés par des virgules)</label>
+    <input type="text" id="r_forfaits" value="${reglages.forfaits_ariary || ''}">
+    <p class="date">Ex : 500,1000,2000,5000,10000 — affichés comme boutons rapides dans le portefeuille des étudiants.</p>
     <p class="date">Les étudiants créent eux-mêmes leur compte sur /inscription.html avec ce code.</p>
 
     <p style="color:var(--muted);font-size:13px;">
@@ -453,7 +457,8 @@ async function chargerReglages() {
     <label>Ariary par jeton (1000 Ar = combien de jetons ?)</label>
     <input type="number" id="r_ariary_par_jeton" value="${reglages.ariary_par_jeton}">
 
-    <h3>Quotas par publication</h3>
+    <h3>Quotas des publications de l'administrateur (gratuites, épinglées)</h3>
+    <p class="date">Les étudiants choisissent maintenant un objectif unique (façon "Booster") à la publication — ces quotas ne s'appliquent qu'à vos propres publications épinglées.</p>
     <label>Quota j'aime</label><input type="number" id="r_quota_jaime" value="${reglages.quota_jaime}">
     <label>Quota commentaires</label><input type="number" id="r_quota_commentaire" value="${reglages.quota_commentaire}">
     <label>Quota partages</label><input type="number" id="r_quota_partage" value="${reglages.quota_partage}">
@@ -487,7 +492,7 @@ function majApercuCout() {
   const cout = v('r_quota_jaime') * v('r_jetons_par_jaime')
     + v('r_quota_commentaire') * v('r_jetons_par_commentaire')
     + v('r_quota_partage') * v('r_jetons_par_partage');
-  document.getElementById('apercuCout').textContent = `Cout d'une publication avec ces reglages : ${cout} jetons`;
+  document.getElementById('apercuCout').textContent = `Coût équivalent d'une publication admin avec ces réglages : ${cout} jetons`;
 
   const jetonsParPoint = v('r_jetons_par_point') || 1;
   const pointsPour = (jetons) => jetons > 0 ? Math.max(1, Math.round(jetons / jetonsParPoint)) : 0;
@@ -514,6 +519,7 @@ async function enregistrerReglages() {
   const corps = {
     code_inscription: document.getElementById('r_code_inscription').value.trim(),
     numero_reception_paiement: document.getElementById('r_numero_reception').value.trim(),
+    forfaits_ariary: document.getElementById('r_forfaits').value.trim(),
     ariary_par_jeton: Number(document.getElementById('r_ariary_par_jeton').value),
     quota_jaime: Number(document.getElementById('r_quota_jaime').value),
     quota_commentaire: Number(document.getElementById('r_quota_commentaire').value),

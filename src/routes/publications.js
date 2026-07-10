@@ -4,26 +4,22 @@ const { authRequired } = require('../middleware/auth');
 
 const router = express.Router();
 
-function calculerCout(reglages) {
-  return (
-    reglages.quota_jaime * reglages.jetons_par_jaime +
-    reglages.quota_commentaire * reglages.jetons_par_commentaire +
-    reglages.quota_partage * reglages.jetons_par_partage
-  );
-}
+const OBJECTIFS_VALIDES = ['LIKE', 'COMMENTAIRE', 'PARTAGE'];
+const COUT_UNITAIRE_PAR_OBJECTIF = {
+  LIKE: 'jetons_par_jaime',
+  COMMENTAIRE: 'jetons_par_commentaire',
+  PARTAGE: 'jetons_par_partage',
+};
 
-// Permet a l'etudiant de voir le cout et les quotas AVANT de publier
+// Permet a l'etudiant de voir les couts unitaires AVANT de choisir son objectif
+// (style "Booster une publication" : un seul objectif par publication).
 router.get('/tarif-actuel', authRequired, (req, res) => {
   const r = getAllSettings();
   res.json({
-    quota_jaime: r.quota_jaime,
-    quota_commentaire: r.quota_commentaire,
-    quota_partage: r.quota_partage,
     jetons_par_jaime: r.jetons_par_jaime,
     jetons_par_commentaire: r.jetons_par_commentaire,
     jetons_par_partage: r.jetons_par_partage,
     jetons_par_point: r.jetons_par_point,
-    cout_total: calculerCout(r),
     gratuit: req.user.role === 'admin',
   });
 });
@@ -62,11 +58,14 @@ router.get('/:id', authRequired, (req, res) => {
   res.json({ ...pub, interactions });
 });
 
-// Creer une publication : debite le cout total, SAUF pour l'administrateur qui
-// publie gratuitement (les interactions de ses publications restent recompensees
-// normalement pour les etudiants qui y interagissent).
+/**
+ * Creer une publication - style "Booster" (comme Facebook Ads) :
+ * l'etudiant choisit UN SEUL objectif (j'aime, commentaire ou partage) et une
+ * quantite ; le cout est calcule uniquement sur cet objectif. L'administrateur
+ * continue de publier gratuitement avec les 3 types actives (quotas des reglages).
+ */
 router.post('/', authRequired, (req, res) => {
-  const { contenu, lien_url } = req.body;
+  const { contenu, lien_url, objectif, quantite } = req.body;
   if (!contenu && !lien_url) {
     return res.status(400).json({ erreur: 'contenu ou lien_url requis' });
   }
@@ -75,13 +74,35 @@ router.post('/', authRequired, (req, res) => {
   }
 
   const r = getAllSettings();
-  const cout = calculerCout(r);
   const estAdmin = req.user.role === 'admin';
 
-  if (!estAdmin && req.user.jetons < cout) {
-    return res.status(400).json({
-      erreur: `Jetons insuffisants. Cette publication coute ${cout} jetons (${r.quota_jaime} j'aime x${r.jetons_par_jaime} + ${r.quota_commentaire} commentaires x${r.jetons_par_commentaire} + ${r.quota_partage} partages x${r.jetons_par_partage}). Vous avez ${req.user.jetons} jetons.`,
-    });
+  let quotaJaime = 0, quotaCommentaire = 0, quotaPartage = 0, cout = 0;
+
+  if (estAdmin) {
+    quotaJaime = r.quota_jaime;
+    quotaCommentaire = r.quota_commentaire;
+    quotaPartage = r.quota_partage;
+  } else {
+    if (!OBJECTIFS_VALIDES.includes(objectif)) {
+      return res.status(400).json({ erreur: "objectif doit etre LIKE, COMMENTAIRE ou PARTAGE" });
+    }
+    const qte = Number(quantite);
+    if (!qte || qte <= 0) {
+      return res.status(400).json({ erreur: 'quantite invalide' });
+    }
+
+    const coutUnitaire = r[COUT_UNITAIRE_PAR_OBJECTIF[objectif]];
+    cout = qte * coutUnitaire;
+
+    if (req.user.jetons < cout) {
+      return res.status(400).json({
+        erreur: `Jetons insuffisants. Cet objectif coute ${cout} jetons (${qte} x ${coutUnitaire}). Vous avez ${req.user.jetons} jetons.`,
+      });
+    }
+
+    if (objectif === 'LIKE') quotaJaime = qte;
+    if (objectif === 'COMMENTAIRE') quotaCommentaire = qte;
+    if (objectif === 'PARTAGE') quotaPartage = qte;
   }
 
   let publicationId;
@@ -101,8 +122,8 @@ router.post('/', authRequired, (req, res) => {
       .run(
         req.user.id, contenu || '', lien_url,
         estAdmin ? 0 : cout,
-        r.quota_jaime, r.quota_commentaire, r.quota_partage,
-        r.quota_jaime, r.quota_commentaire, r.quota_partage,
+        quotaJaime, quotaCommentaire, quotaPartage,
+        quotaJaime, quotaCommentaire, quotaPartage,
         r.jetons_par_jaime, r.jetons_par_commentaire, r.jetons_par_partage
       );
     publicationId = insertion.lastInsertRowid;
@@ -110,7 +131,7 @@ router.post('/', authRequired, (req, res) => {
       db.prepare(
         `INSERT INTO transactions (user_id, type, montant_jetons, description)
          VALUES (?, 'DEBIT_PUBLICATION', ?, ?)`
-      ).run(req.user.id, -cout, `Publication #${publicationId} creee (-${cout} jetons)`);
+      ).run(req.user.id, -cout, `Publication #${publicationId} - objectif ${objectif} x${quantite} (-${cout} jetons)`);
     }
   });
   maj();
