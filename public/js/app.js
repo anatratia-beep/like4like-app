@@ -121,10 +121,11 @@ async function chargerPublier() {
 
   zone.innerHTML = `
     <p class="date">Vous avez <b>${s.jetons} jetons</b>. Choisissez ce que vous voulez booster :</p>
-    <div class="actions-pub" style="margin-bottom:10px;">
-      <button class="secondaire" id="objJAIME" onclick="choisirObjectif('LIKE')">${ICONES.coeur} J'aime<br><span style="font-size:10px;opacity:0.7;">${t.jetons_par_jaime} jetons/action</span></button>
-      <button class="secondaire" id="objCOMMENTAIRE" onclick="choisirObjectif('COMMENTAIRE')">${ICONES.commentaire} Commentaire<br><span style="font-size:10px;opacity:0.7;">${t.jetons_par_commentaire} jetons/action</span></button>
-      <button class="secondaire" id="objPARTAGE" onclick="choisirObjectif('PARTAGE')">${ICONES.partage} Partage<br><span style="font-size:10px;opacity:0.7;">${t.jetons_par_partage} jetons/action</span></button>
+    <div class="grille-objectifs">
+      <button class="secondaire" id="objJAIME" onclick="choisirObjectif('LIKE')">${ICONES.coeur} J'aime<span class="cout">${t.jetons_par_jaime} jetons/action</span></button>
+      <button class="secondaire" id="objCOMMENTAIRE" onclick="choisirObjectif('COMMENTAIRE')">${ICONES.commentaire} Commentaire<span class="cout">${t.jetons_par_commentaire} jetons/action</span></button>
+      <button class="secondaire" id="objPARTAGE" onclick="choisirObjectif('PARTAGE')">${ICONES.partage} Partage<span class="cout">${t.jetons_par_partage} jetons/action</span></button>
+      <button class="secondaire large" id="objTOUS" onclick="choisirObjectif('TOUS')">${ICONES.piece} Les 3 objectifs</button>
     </div>
     <div id="detailsObjectif"></div>
   `;
@@ -132,41 +133,73 @@ async function chargerPublier() {
 
 function choisirObjectif(objectif) {
   objectifChoisi = objectif;
-  ['LIKE', 'COMMENTAIRE', 'PARTAGE'].forEach((o) => {
-    const id = { LIKE: 'objJAIME', COMMENTAIRE: 'objCOMMENTAIRE', PARTAGE: 'objPARTAGE' }[o];
+  ['LIKE', 'COMMENTAIRE', 'PARTAGE', 'TOUS'].forEach((o) => {
+    const id = { LIKE: 'objJAIME', COMMENTAIRE: 'objCOMMENTAIRE', PARTAGE: 'objPARTAGE', TOUS: 'objTOUS' }[o];
     document.getElementById(id).classList.toggle('accent', o === objectif);
   });
 
-  const noms = { LIKE: "j'aime", COMMENTAIRE: 'commentaires', PARTAGE: 'partages' };
-  const cout = { LIKE: tarifsObjectifs.jetons_par_jaime, COMMENTAIRE: tarifsObjectifs.jetons_par_commentaire, PARTAGE: tarifsObjectifs.jetons_par_partage }[objectif];
-
-  document.getElementById('detailsObjectif').innerHTML = `
-    <label>Combien de ${noms[objectif]} voulez-vous obtenir ?</label>
-    <input type="number" id="quantiteObjectif" min="1" value="10" oninput="majCoutObjectif()">
-    <p id="coutObjectifAffiche" style="font-weight:600;"></p>
-    <textarea id="contenuPub" placeholder="Texte de votre publication" rows="3"></textarea>
-    <input type="url" id="lienPub" placeholder="Lien vers la publication (Facebook, Instagram, TikTok...)" required>
-    <button onclick="publier()">Publier</button>
-    <div id="messagePub"></div>
-  `;
+  if (objectif === 'TOUS') {
+    document.getElementById('detailsObjectif').innerHTML = `
+      <label>Quantité de j'aime</label>
+      <input type="number" id="qteJaime" min="0" value="10" oninput="majCoutObjectif()">
+      <label>Quantité de commentaires</label>
+      <input type="number" id="qteCommentaire" min="0" value="5" oninput="majCoutObjectif()">
+      <label>Quantité de partages</label>
+      <input type="number" id="qtePartage" min="0" value="3" oninput="majCoutObjectif()">
+      <p id="coutObjectifAffiche" style="font-weight:600;"></p>
+      <textarea id="contenuPub" placeholder="Texte de votre publication" rows="3"></textarea>
+      <input type="url" id="lienPub" placeholder="Lien vers la publication (Facebook, Instagram, TikTok...)" required>
+      <button onclick="publier()">Publier</button>
+      <div id="messagePub"></div>
+    `;
+  } else {
+    const noms = { LIKE: "j'aime", COMMENTAIRE: 'commentaires', PARTAGE: 'partages' };
+    document.getElementById('detailsObjectif').innerHTML = `
+      <label>Combien de ${noms[objectif]} voulez-vous obtenir ?</label>
+      <input type="number" id="quantiteObjectif" min="1" value="10" oninput="majCoutObjectif()">
+      <p id="coutObjectifAffiche" style="font-weight:600;"></p>
+      <textarea id="contenuPub" placeholder="Texte de votre publication" rows="3"></textarea>
+      <input type="url" id="lienPub" placeholder="Lien vers la publication (Facebook, Instagram, TikTok...)" required>
+      <button onclick="publier()">Publier</button>
+      <div id="messagePub"></div>
+    `;
+  }
   majCoutObjectif();
 }
 
 function majCoutObjectif() {
-  const qte = Number(document.getElementById('quantiteObjectif').value) || 0;
-  const cout = { LIKE: tarifsObjectifs.jetons_par_jaime, COMMENTAIRE: tarifsObjectifs.jetons_par_commentaire, PARTAGE: tarifsObjectifs.jetons_par_partage }[objectifChoisi];
-  document.getElementById('coutObjectifAffiche').textContent = `Coût total : ${qte * cout} jetons`;
+  let cout;
+  if (objectifChoisi === 'TOUS') {
+    const qj = Number(document.getElementById('qteJaime').value) || 0;
+    const qc = Number(document.getElementById('qteCommentaire').value) || 0;
+    const qp = Number(document.getElementById('qtePartage').value) || 0;
+    cout = qj * tarifsObjectifs.jetons_par_jaime + qc * tarifsObjectifs.jetons_par_commentaire + qp * tarifsObjectifs.jetons_par_partage;
+  } else {
+    const qte = Number(document.getElementById('quantiteObjectif').value) || 0;
+    const coutUnitaire = { LIKE: tarifsObjectifs.jetons_par_jaime, COMMENTAIRE: tarifsObjectifs.jetons_par_commentaire, PARTAGE: tarifsObjectifs.jetons_par_partage }[objectifChoisi];
+    cout = qte * coutUnitaire;
+  }
+  document.getElementById('coutObjectifAffiche').textContent = `Coût total : ${cout} jetons`;
 }
 
 async function publier() {
   const contenu = document.getElementById('contenuPub').value.trim();
   const lien_url = document.getElementById('lienPub').value.trim();
-  const quantite = Number(document.getElementById('quantiteObjectif').value);
   const msg = document.getElementById('messagePub');
   if (!objectifChoisi) { msg.innerHTML = '<div class="erreur">Choisissez un objectif</div>'; return; }
   if (!lien_url) { msg.innerHTML = '<div class="erreur">Le lien de la publication est requis</div>'; return; }
+
+  const corps = { contenu, lien_url, objectif: objectifChoisi };
+  if (objectifChoisi === 'TOUS') {
+    corps.quantite_jaime = Number(document.getElementById('qteJaime').value) || 0;
+    corps.quantite_commentaire = Number(document.getElementById('qteCommentaire').value) || 0;
+    corps.quantite_partage = Number(document.getElementById('qtePartage').value) || 0;
+  } else {
+    corps.quantite = Number(document.getElementById('quantiteObjectif').value);
+  }
+
   try {
-    const r = await api('/publications', 'POST', { contenu, lien_url, objectif: objectifChoisi, quantite });
+    const r = await api('/publications', 'POST', corps);
     msg.innerHTML = `<div class="succes">Publication créée ! (-${r.cout_total} jetons)</div>`;
     majSoldes();
     chargerPublier();

@@ -152,6 +152,14 @@ button.accent { background: var(--accent); border-color: var(--accent); }
 .actions-pub button { width: auto; flex: 1; font-size: 12.5px; padding: 9px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .actions-pub button svg { width: 15px; height: 15px; }
 
+.grille-objectifs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.grille-objectifs button {
+  flex-direction: column; gap: 4px; padding: 12px 4px; font-size: 12px; width: 100%; min-width: 0;
+}
+.grille-objectifs button svg { width: 18px; height: 18px; }
+.grille-objectifs button span.cout { font-size: 10px; opacity: 0.65; font-weight: 500; }
+.grille-objectifs button.large { grid-column: 1 / -1; flex-direction: row; }
+
 .transaction-item, .interaction-item, .conversation-item, .retrait-item, .etudiant-item {
   display: flex; justify-content: space-between; align-items: center;
   padding: 12px 2px; border-bottom: 1px solid var(--border); font-size: 13.5px;

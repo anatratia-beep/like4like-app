@@ -4,7 +4,7 @@ const { authRequired } = require('../middleware/auth');
 
 const router = express.Router();
 
-const OBJECTIFS_VALIDES = ['LIKE', 'COMMENTAIRE', 'PARTAGE'];
+const OBJECTIFS_VALIDES = ['LIKE', 'COMMENTAIRE', 'PARTAGE', 'TOUS'];
 const COUT_UNITAIRE_PAR_OBJECTIF = {
   LIKE: 'jetons_par_jaime',
   COMMENTAIRE: 'jetons_par_commentaire',
@@ -65,7 +65,7 @@ router.get('/:id', authRequired, (req, res) => {
  * continue de publier gratuitement avec les 3 types actives (quotas des reglages).
  */
 router.post('/', authRequired, (req, res) => {
-  const { contenu, lien_url, objectif, quantite } = req.body;
+  const { contenu, lien_url, objectif, quantite, quantite_jaime, quantite_commentaire, quantite_partage } = req.body;
   if (!contenu && !lien_url) {
     return res.status(400).json({ erreur: 'contenu ou lien_url requis' });
   }
@@ -84,25 +84,38 @@ router.post('/', authRequired, (req, res) => {
     quotaPartage = r.quota_partage;
   } else {
     if (!OBJECTIFS_VALIDES.includes(objectif)) {
-      return res.status(400).json({ erreur: "objectif doit etre LIKE, COMMENTAIRE ou PARTAGE" });
-    }
-    const qte = Number(quantite);
-    if (!qte || qte <= 0) {
-      return res.status(400).json({ erreur: 'quantite invalide' });
+      return res.status(400).json({ erreur: "objectif doit etre LIKE, COMMENTAIRE, PARTAGE ou TOUS" });
     }
 
-    const coutUnitaire = r[COUT_UNITAIRE_PAR_OBJECTIF[objectif]];
-    cout = qte * coutUnitaire;
+    if (objectif === 'TOUS') {
+      quotaJaime = Math.max(0, Number(quantite_jaime) || 0);
+      quotaCommentaire = Math.max(0, Number(quantite_commentaire) || 0);
+      quotaPartage = Math.max(0, Number(quantite_partage) || 0);
+
+      if (quotaJaime + quotaCommentaire + quotaPartage <= 0) {
+        return res.status(400).json({ erreur: 'Indiquez au moins une quantite pour un des 3 objectifs' });
+      }
+
+      cout = quotaJaime * r.jetons_par_jaime + quotaCommentaire * r.jetons_par_commentaire + quotaPartage * r.jetons_par_partage;
+    } else {
+      const qte = Number(quantite);
+      if (!qte || qte <= 0) {
+        return res.status(400).json({ erreur: 'quantite invalide' });
+      }
+
+      const coutUnitaire = r[COUT_UNITAIRE_PAR_OBJECTIF[objectif]];
+      cout = qte * coutUnitaire;
+
+      if (objectif === 'LIKE') quotaJaime = qte;
+      if (objectif === 'COMMENTAIRE') quotaCommentaire = qte;
+      if (objectif === 'PARTAGE') quotaPartage = qte;
+    }
 
     if (req.user.jetons < cout) {
       return res.status(400).json({
-        erreur: `Jetons insuffisants. Cet objectif coute ${cout} jetons (${qte} x ${coutUnitaire}). Vous avez ${req.user.jetons} jetons.`,
+        erreur: `Jetons insuffisants. Ceci coute ${cout} jetons. Vous avez ${req.user.jetons} jetons.`,
       });
     }
-
-    if (objectif === 'LIKE') quotaJaime = qte;
-    if (objectif === 'COMMENTAIRE') quotaCommentaire = qte;
-    if (objectif === 'PARTAGE') quotaPartage = qte;
   }
 
   let publicationId;
